@@ -7,7 +7,7 @@ export type Row = Record<string, unknown>;
 export class Spacetime {
   constructor(
     readonly host: string, // e.g. https://maincloud.spacetimedb.com
-    readonly db: string, // database name, e.g. protego
+    readonly db: string, // database name, e.g. tango
     public token?: string
   ) {}
 

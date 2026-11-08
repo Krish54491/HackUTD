@@ -228,5 +228,5 @@ export default defineBackground(() => {
   });
 
   // Warm up the identity so the first scan is fast.
-  api.client().catch(e => console.warn('[protego] Spacetime unavailable:', e));
+  api.client().catch(e => console.warn('[tango] Spacetime unavailable:', e));
 });

@@ -11,7 +11,7 @@ export async function fetchSignals(
     const res = await fetch(`https://${domain}/`, {
       redirect: 'follow',
       signal: AbortSignal.timeout(10000),
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ProtegoScanner/0.1)' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; TangoScanner/0.1)' },
     });
     const html = (await res.text()).slice(0, 500_000);
     return { signals: signalsFromHtml(html, domain, new URL(res.url).protocol), ok: res.ok, status: res.status };

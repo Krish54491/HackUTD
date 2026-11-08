@@ -1,5 +1,5 @@
 /**
- * Protego — SpacetimeDB module.
+ * Tango — SpacetimeDB module.
  *
  * This is the shared backend for the web extension, website, and phone app.
  * All state lives here; clients only ever call reducers and read public tables.
@@ -142,7 +142,7 @@ export default spacetimedb;
 
 function requireWorker(ctx: any) {
   if (!ctx.db.worker.identity_hex.find(hex(ctx.sender))) {
-    throw new SenderError('Only a registered Protego worker may call this reducer');
+    throw new SenderError('Only a registered Tango worker may call this reducer');
   }
 }
 

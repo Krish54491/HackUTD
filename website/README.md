@@ -1,4 +1,4 @@
-# Protego dashboard
+# Tango dashboard
 
 React, TypeScript, Tailwind CSS, and Vite implementation of [Web-docs.md](Web-docs.md).
 
@@ -16,7 +16,7 @@ Website checks use the same Spacetime HTTP client and reducers as the extension.
 
 ```dotenv
 VITE_SPACETIME_HOST=https://maincloud.spacetimedb.com
-VITE_SPACETIME_DB=protego
+VITE_SPACETIME_DB=tango
 ```
 
 Scans use an anonymous backend identity, separate from the simulated dashboard sign-in. No fake safety verdicts are generated if the backend is unavailable. Protection history and leaderboard are demo data; live account synchronization is not implemented.

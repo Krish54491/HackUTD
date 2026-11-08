@@ -10,9 +10,9 @@ import { sha256Hex } from '@/lib/domain';
 import { bg } from '@/lib/messaging';
 import type { ListingItem, ListingResult, TabMessage } from '@/lib/types';
 
-const HIDDEN_ATTR = 'data-protego-hidden';
-const STUB_CLASS = 'protego-listing-stub';
-const BANNER_CLASS = 'protego-listing-banner';
+const HIDDEN_ATTR = 'data-tango-hidden';
+const STUB_CLASS = 'tango-listing-stub';
+const BANNER_CLASS = 'tango-listing-banner';
 /** Bump when the classifier changes, so old cached "looks fine" verdicts aren't reused. */
 const KEY_VERSION = 'v2';
 
@@ -52,7 +52,7 @@ export default defineContentScript({
       ].join(';'));
       const msg = document.createElement('span');
       msg.style.flex = '1';
-      msg.textContent = `Protego hid a suspicious listing: ${v.reason || 'multiple scam warning signs'}`;
+      msg.textContent = `Tango hid a suspicious listing: ${v.reason || 'multiple scam warning signs'}`;
       const show = document.createElement('button');
       show.textContent = 'Show anyway';
       show.setAttribute('style', 'all:unset;cursor:pointer;color:#E20074;font-weight:600;text-decoration:underline');
@@ -85,7 +85,7 @@ export default defineContentScript({
       icon.alt = '';
       const text = document.createElement('div');
       const h = document.createElement('b');
-      h.textContent = 'Protego: this listing looks like a scam';
+      h.textContent = 'Tango: this listing looks like a scam';
       h.style.display = 'block';
       const p = document.createElement('span');
       p.textContent = `${v.reason || 'It shows several common scam warning signs.'} Don't send money, ID or bank details, and don't move the conversation off this site.`;
@@ -190,7 +190,7 @@ export default defineContentScript({
           }
           if (newlyBlocked.length) await bg({ type: 'LISTINGS_BLOCKED', site: site!.site, blocked: newlyBlocked });
         } catch (e) {
-          console.debug('[protego] listing check failed', e);
+          console.debug('[tango] listing check failed', e);
         } finally {
           chunk.forEach(it => pending.delete(it.key));
         }

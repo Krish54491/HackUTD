@@ -19,8 +19,8 @@ type Props = {
 
 /**
  * "Website security report" (mockup image-1).
- * The [data-protego-hornet-slot] element is the hook for the future
- * "Protego swoops in and kills the hornet" entrance animation.
+ * The [data-tango-hornet-slot] element is the hook for the future
+ * "Tango swoops in and kills the hornet" entrance animation.
  */
 export function RiskReport({ report, onClose, primary, secondary, tertiary, variant = 'page' }: Props) {
   const level = report.risk_level;
@@ -73,7 +73,7 @@ export function RiskReport({ report, onClose, primary, secondary, tertiary, vari
         </section>
 
         <aside className="pg-modal-side">
-          <div data-protego-hornet-slot className="pg-hornet-slot">
+          <div data-tango-hornet-slot className="pg-hornet-slot">
             <Character mood={moodFor(level)} size={140} />
           </div>
           <p className="pg-side-title">Pause before you pay.</p>

@@ -10,7 +10,7 @@ export function moodFor(level: RiskLevel | null | undefined): Mood {
   return 'happy';
 }
 
-/** The Protego character. Replaces the gray placeholder circles in the mockups. */
+/** The Tango character. Replaces the gray placeholder circles in the mockups. */
 export function Character({ mood, size = 120 }: { mood: Mood; size?: number }) {
   // getURL's typing only knows files WXT has seen; characters live in /public.
   const src = (browser.runtime.getURL as (p: string) => string)(`/characters/${mood}.png`);
@@ -18,7 +18,7 @@ export function Character({ mood, size = 120 }: { mood: Mood; size?: number }) {
 }
 
 export function Logo() {
-  return <span className="pg-logo">protego.</span>;
+  return <span className="pg-logo">tango.</span>;
 }
 
 /** Green → yellow → red bar with an arrow at `score`%. */

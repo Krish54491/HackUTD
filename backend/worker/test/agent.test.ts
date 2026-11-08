@@ -77,7 +77,7 @@ describe('site investigation workflow (mocked Nemotron + services)', () => {
           if (decide === 'answer') return reply(JSON.stringify(REPORT));
           return reply(null, [{ id: 'c1', type: 'function', function: { name: 'web_search', arguments: '{"query":"velora outlet bbb"}' } }]);
         }
-        if (system.includes("Protego's risk analyst")) {
+        if (system.includes("Tango's risk analyst")) {
           calls.push('verdict');
           expect(body.messages[1].content).toContain('velora outlet bbb');
           return reply(JSON.stringify(REPORT));

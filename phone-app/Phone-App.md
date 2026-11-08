@@ -1,4 +1,4 @@
-# Protego - Phone App
+# Tango - Phone App
 
 ## Important
 
@@ -12,14 +12,14 @@
 
 ## General
 
-Protego checks incoming messaging notifications for signs of scams and warns users before they respond or open suspicious links. Optional local VPN filtering adds another layer of protection against known-bad domains.
+Tango checks incoming messaging notifications for signs of scams and warns users before they respond or open suspicious links. Optional local VPN filtering adds another layer of protection against known-bad domains.
 
 The main navigation includes Home, History, and Settings. Selecting a flagged message opens its review screen, with options to see why it was flagged, share redacted threat indicators, or mark it as not a scam.
 
 Example flow:
 
-- A suspicious text arrives and Protego checks the content available in its notification.
-- If it looks like a scam, Protego hides the original notification and posts its own warning.
+- A suspicious text arrives and Tango checks the content available in its notification.
+- If it looks like a scam, Tango hides the original notification and posts its own warning.
 - The user taps Review message to inspect the notification preview and the warning signs.
 - Optional domain filtering can block a request to a known-bad domain.
 - The user can review an explanation, correct the flag, or choose to share threat indicators with the Hornet's Nest via Spacetime.
@@ -28,8 +28,8 @@ Example flow:
 
 Shows the permissions needed for protection and whether each is ready:
 
-- Show Protego alerts: allows the app to display warning notifications.
-- Notification access: allows Protego to inspect messaging notifications. Explain that Android notification access may expose sender names, message previews, and personal details.
+- Show Tango alerts: allows the app to display warning notifications.
+- Notification access: allows Tango to inspect messaging notifications. Explain that Android notification access may expose sender names, message previews, and personal details.
 - Malicious-link protection: optional local VPN setup for filtering known-bad domains.
 
 Show a required-permission readiness count and an inactive state until the required permissions are ready. Open notification access takes the user to Android's notification-access settings. Set up local VPN starts the optional VPN setup. Set up later lets the user continue without implying that protection is active.
@@ -44,11 +44,11 @@ Shows the current state of notification monitoring and optional suspicious-domai
 - Selecting a recent message opens its review screen.
 - View all opens protection history.
 
-![Protego protection setup and active Home screen with permission status, hornets defeated, and recent flagged messages](image/Phone-App/protection-setup-and-home.png)
+![Tango protection setup and active Home screen with permission status, hornets defeated, and recent flagged messages](protection-setup-and-home.png)
 
 ## Background Protection / Warning Notification
 
-The planned notification flow uses NotificationListenerService to inspect incoming SMS and RCS notification previews. When a message is flagged, use cancelNotification() to hide the original alert and post a Protego warning with a Review message action.
+The planned notification flow uses NotificationListenerService to inspect incoming SMS and RCS notification previews. When a message is flagged, use cancelNotification() to hide the original alert and post a Tango warning with a Review message action.
 
 The warning should say that a suspected scam was detected and explain that the original alert was hidden while the message remains in the inbox. Avoid saying that the message itself was blocked or deleted.
 
@@ -60,13 +60,13 @@ Shows the suspected scam and the content captured from its notification preview:
 
 - Warning summary and time checked.
 - Message type, sender, and received time.
-- Available message preview, with suspicious URLs neutralized and non-clickable inside Protego.
+- Available message preview, with suspicious URLs neutralized and non-clickable inside Tango.
 - Reason tags such as urgency, unexpected fee, and lookalike link.
 - A reminder that the original message is still in the messaging inbox.
 
-Why it was flagged opens the explanation screen. Share threat opens a sharing preview rather than immediately uploading data. Mark as not a scam records a correction and removes the Protego flag without changing the original message.
+Why it was flagged opens the explanation screen. Share threat opens a sharing preview rather than immediately uploading data. Mark as not a scam records a correction and removes the Tango flag without changing the original message.
 
-![Protego Android warning notification and flagged-message review with a disabled link, warning tags, and review actions](image/Phone-App/notification-and-message-review.png)
+![Tango Android warning notification and flagged-message review with a disabled link, warning tags, and review actions](notification-and-message-review.png)
 
 ## Scam Detection / Why It Was Flagged
 
@@ -95,18 +95,18 @@ Include a practical next step, such as checking a delivery through the retailer'
 
 The explanation screen assumes a T-Mobile user and includes a section such as: “Since you're a T-Mobile user, here are services that can help.”
 
-The mockup includes Scam Shield, Scam ID, and Scam Block, with a link to T-Mobile's official guide. Explain their role as additional call protection and keep it separate from Protego's message analysis. These services should not be described as deleting SMS messages or resolving the flagged text. Availability and eligibility may vary.
+The mockup includes Scam Shield, Scam ID, and Scam Block, with a link to T-Mobile's official guide. Explain their role as additional call protection and keep it separate from Tango's message analysis. These services should not be described as deleting SMS messages or resolving the flagged text. Availability and eligibility may vary.
 
 ## Protection History / Hornets Defeated
 
-Shows Protego's review records, including warnings, domain blocks, and user corrections. These are app records; the original messages remain in the messaging app.
+Shows Tango's review records, including warnings, domain blocks, and user corrections. These are app records; the original messages remain in the messaging app.
 
 - Show the total hornets defeated and the selected period.
 - Include reviewed, flagged, and corrected counts.
 - Support All, Flagged, and Corrected filters.
 - Each record includes a status, time, title, domain when present, scam category, and action taken.
 - Group related actions under one attempt, such as a warning followed by a domain block, and count that attempt once.
-- Corrected records explain that the user marked the message as not a scam, the Protego flag was removed, and protection remains active.
+- Corrected records explain that the user marked the message as not a scam, the Tango flag was removed, and protection remains active.
 
 ## Share to Hornet's Nest
 
@@ -122,7 +122,7 @@ Sharing consent is separate from cloud-analysis consent. Sharing adds no extra h
 
 ## Privacy & Protection Settings
 
-Shows notification access, Protego warning-alert permission, and Hornet's Nest sharing preferences.
+Shows notification access, Tango warning-alert permission, and Hornet's Nest sharing preferences.
 
 - Manage notification access opens the corresponding Android settings.
 - Manage Android alerts opens the app's notification settings.
@@ -130,13 +130,13 @@ Shows notification access, Protego warning-alert permission, and Hornet's Nest s
 - Hornet's Nest sharing defaults to Ask each time, with a reminder to review redacted indicators before sharing.
 - Explain that cloud classification sends message content to a server. Obtain separate consent and redact personal details before transmission. On-device analysis is a possible future alternative.
 
-![Protego explanation and T-Mobile service recommendations, protection history, redacted Hornet's Nest sharing preview, and privacy settings](image/Phone-App/explanation-history-sharing-and-settings.png)
+![Tango explanation and T-Mobile service recommendations, protection history, redacted Hornet's Nest sharing preview, and privacy settings](explanation-history-sharing-and-settings.png)
 
 ## Frontend / Non-Functional extras
 
 - Match the mockups' pink accents, light backgrounds, rounded white cards, and dark hornets-defeated summary cards.
 - Keep gray logo and character circles as placeholders.
 - Use green for active protection and corrected records, and amber for suspected-scam warnings.
-- Keep suspicious links non-clickable in Protego's review screens.
+- Keep suspicious links non-clickable in Tango's review screens.
 - Highlight the current Home, History, or Settings tab in the bottom navigation.
 - Detail screens provide a back action to the previous screen.

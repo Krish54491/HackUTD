@@ -1,5 +1,5 @@
 /**
- * Background-only wrapper around the Protego SpacetimeDB module.
+ * Background-only wrapper around the Tango SpacetimeDB module.
  * Every call goes through reducers / public-table SQL; no other server exists.
  */
 import { browser } from 'wxt/browser';

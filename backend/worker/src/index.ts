@@ -1,5 +1,5 @@
 /**
- * Protego agent worker.
+ * Tango agent worker.
  *
  * SpacetimeDB is the system of record; this process only does what reducers
  * can't: outbound HTTP (RDAP, blocklists, Safe Browsing) and the Claude agent.
@@ -20,7 +20,7 @@ import { AGENT_MODEL, FALLBACK_MODEL, FAST_MODEL, hasNvidiaKey } from './nemotro
 import type { ClientSignals, Report, ServerEvidence } from './types';
 
 const HOST = process.env.SPACETIME_HOST ?? 'https://maincloud.spacetimedb.com';
-const DB = process.env.SPACETIME_DB ?? 'protego';
+const DB = process.env.SPACETIME_DB ?? 'tango';
 const POLL_MS = Number(process.env.POLL_MS ?? 750);
 /** Scans and listing batches get separate slots so a slow one never queues the other. */
 const MAX_SCANS = Number(process.env.MAX_PARALLEL ?? 6);

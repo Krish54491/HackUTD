@@ -1,13 +1,13 @@
 /**
- * Puts Protego's popup in the browser's TOP LAYER, above anything a z-index can
+ * Puts Tango's popup in the browser's TOP LAYER, above anything a z-index can
  * reach: the page's own modal <dialog>s, popovers and fullscreen elements.
  *
  * A z-index alone loses to those, so the popup lives inside its own modal
  * <dialog>. If the page opens a top-layer element of its own later, the dialog
  * is re-opened so it goes back on top (the most recently opened wins).
- * Escape and other "close requests" are ignored; only Protego's buttons close it.
+ * Escape and other "close requests" are ignored; only Tango's buttons close it.
  */
-const ATTR = 'data-protego-layer';
+const ATTR = 'data-tango-layer';
 const IMPORTANT_STYLES: Record<string, string> = {
   position: 'fixed',
   inset: '0',
@@ -33,7 +33,7 @@ export function createTopLayer(): TopLayer {
   const dialog = document.createElement('dialog');
   dialog.setAttribute(ATTR, '');
   dialog.setAttribute('closedby', 'none'); // Chrome 134+: no Escape / light dismiss
-  dialog.setAttribute('aria-label', 'Protego security check');
+  dialog.setAttribute('aria-label', 'Tango security check');
   for (const [k, v] of Object.entries(IMPORTANT_STYLES)) dialog.style.setProperty(k, v, 'important');
 
   // The default ::backdrop would double-dim; ours is drawn inside the shadow root.

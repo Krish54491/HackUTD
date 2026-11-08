@@ -1,4 +1,4 @@
-/* Protego design tokens + components. Used in the popup and inside the
+/* Tango design tokens + components. Used in the popup and inside the
    shadow-root modal, so everything is prefixed `pg-` and self-contained. */
 :root,
 :host {

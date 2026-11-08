@@ -1,12 +1,12 @@
 {
-  "name": "protego-spacetime",
+  "name": "tango-spacetime",
   "private": true,
   "type": "module",
   "scripts": {
     "typecheck": "tsc",
     "test": "vitest run",
-    "publish:cloud": "spacetime publish --server maincloud protego",
-    "publish:local": "spacetime publish --server local protego"
+    "publish:cloud": "spacetime publish --server maincloud tango",
+    "publish:local": "spacetime publish --server local tango"
   },
   "dependencies": {
     "scripts": "^0.1.0",

@@ -10,7 +10,7 @@ export async function checkSafeBrowsing(domain: string): Promise<NonNullable<Ser
       headers: { 'Content-Type': 'application/json' },
       signal: AbortSignal.timeout(8000),
       body: JSON.stringify({
-        client: { clientId: 'protego', clientVersion: '0.1.0' },
+        client: { clientId: 'tango', clientVersion: '0.1.0' },
         threatInfo: {
           threatTypes: ['MALWARE', 'SOCIAL_ENGINEERING', 'UNWANTED_SOFTWARE', 'POTENTIALLY_HARMFUL_APPLICATION'],
           platformTypes: ['ANY_PLATFORM'],
