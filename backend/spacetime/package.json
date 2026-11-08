@@ -5,8 +5,8 @@
   "scripts": {
     "typecheck": "tsc",
     "test": "vitest run",
-    "publish:cloud": "spacetime publish --server maincloud tango",
-    "publish:local": "spacetime publish --server local tango"
+    "publish:cloud": "spacetime publish --server maincloud protego",
+    "publish:local": "spacetime publish --server local protego"
   },
   "dependencies": {
     "scripts": "^0.1.0",

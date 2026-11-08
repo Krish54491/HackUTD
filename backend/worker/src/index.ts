@@ -20,7 +20,8 @@ import { AGENT_MODEL, FALLBACK_MODEL, FAST_MODEL, hasNvidiaKey } from './nemotro
 import type { ClientSignals, Report, ServerEvidence } from './types';
 
 const HOST = process.env.SPACETIME_HOST ?? 'https://maincloud.spacetimedb.com';
-const DB = process.env.SPACETIME_DB ?? 'tango';
+// Internal database name on maincloud; kept as "protego" after the rebrand so live data isn't lost.
+const DB = process.env.SPACETIME_DB ?? 'protego';
 const POLL_MS = Number(process.env.POLL_MS ?? 750);
 /** Scans and listing batches get separate slots so a slow one never queues the other. */
 const MAX_SCANS = Number(process.env.MAX_PARALLEL ?? 6);
