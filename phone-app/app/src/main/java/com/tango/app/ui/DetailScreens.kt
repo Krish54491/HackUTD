@@ -14,10 +14,11 @@ import com.tango.app.data.MessageRecord
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ReviewScreen(message: MessageRecord, explanation: () -> Unit, share: () -> Unit, correct: () -> Unit) {
+fun ReviewScreen(message: MessageRecord, explanation: () -> Unit, share: () -> Unit, correct: () -> Unit, animation: (() -> Unit)? = null) {
     var confirmCorrection by rememberSaveable { mutableStateOf(false) }
     Heading("Message review", if (message.corrected) "A second look.\nYour correction." else "Pause before you pay.")
     Badge("Fictional message · demo", Pink, PinkTint)
+    if (animation != null) TextAction("Replay warning animation", animation)
     Panel(if (message.corrected) GreenTint else AmberTint) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Icon(if (message.corrected) AppIcons.CheckCircle else AppIcons.WarningAmber, null, tint = if (message.corrected) Green else Amber)

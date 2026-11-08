@@ -140,3 +140,10 @@ Shows notification access, Tango warning-alert permission, and Hornet's Nest sha
 - Keep suspicious links non-clickable in Tango's review screens.
 - Highlight the current Home, History, or Settings tab in the bottom navigation.
 - Detail screens provide a back action to the previous screen.
+
+
+## Native Warning Animation
+
+Use the same visual sequence as the extension, adapted for a portrait app screen. Medium risk rolls the suspicious light-mode character into view and pops out its limbs before presenting warning clues. High risk first reveals a hornet, then rolls in the angry light-mode character, pops out its limbs, slashes the hornet into pieces, and presents the warning and protection tip.
+
+Trigger the sequence before reviewing an active medium/high-risk message, including when opening the demo notification. Low-risk and corrected records bypass it. Home provides separate medium/high demo preview buttons; active message reviews provide replay. Respect Android's animation scale, stop sounds while backgrounded, and provide Skip animation and a sound toggle. The sequence stays inside the app and does not modify messages or add hornets.

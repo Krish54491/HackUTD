@@ -1,5 +1,7 @@
 package com.tango.app.data
 
+enum class MessageRisk { NONE, LOW, MEDIUM, HIGH }
+
 data class Clue(val title: String, val detail: String)
 data class MessageRecord(
     val id: String,
@@ -15,6 +17,7 @@ data class MessageRecord(
     val advice: String,
     val corrected: Boolean = false,
     val domainBlocked: Boolean = false,
+    val risk: MessageRisk = MessageRisk.HIGH,
 ) {
     val neutralizedLink: String? get() = domain?.let { "hxxps://${it.replace(".", "[.]")}/pay" }
     fun sharingPreview(): ThreatIndicators? = if (corrected || domain == null) null else ThreatIndicators(domain, category, tags)
@@ -57,6 +60,7 @@ object DemoRecords {
             listOf(Clue("An urgent account warning", "The message pressures you to restore access immediately."),
                 Clue("A request for credentials", "It asks for a password through an unfamiliar link. Verify through the official app.")),
             "Concerned about your account?", "Open the official app yourself. Never enter a password through an unsolicited message link.",
+            risk = MessageRisk.MEDIUM,
         ),
         MessageRecord(
             "prize", "Prize claim payment", "prize-claim.example", "Nov 5 · 9:24 AM",
@@ -71,7 +75,7 @@ object DemoRecords {
             "dental", "Dental appointment reminder", null, "Nov 4 · 2:06 PM", "Unfamiliar sender",
             "+1 (202) 555-0181", "Reminder: Your dental appointment is tomorrow at 2 PM. Call our office if you need to reschedule.",
             emptyList(), listOf(Clue("Reviewed by you", "You recognized this appointment reminder and marked it as not a scam.")),
-            "Know the sender?", "Verify unfamiliar reminders using a number you already trust.", corrected = true,
+            "Know the sender?", "Verify unfamiliar reminders using a number you already trust.", corrected = true, risk = MessageRisk.NONE,
         ),
     )
 }

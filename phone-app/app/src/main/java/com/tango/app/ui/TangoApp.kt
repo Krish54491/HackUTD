@@ -44,11 +44,18 @@ fun TangoApp(
         nav.navigate(destination) { popUpTo(nav.graph.id); launchSingleTop = true }
     }
     fun notify(text: String) { scope.launch { snackbar.showSnackbar(text) } }
+    fun openMessage(id: String) {
+        val message = records.firstOrNull { it.id == id }
+        if (message != null && !message.corrected && message.risk in setOf(MessageRisk.MEDIUM, MessageRisk.HIGH)) {
+            nav.navigate("warning/$id/${message.risk.name}")
+        } else nav.navigate("review/$id")
+    }
+
     LaunchedEffect(openReview) {
         openReview?.let { id ->
             if (records.any { it.id == id }) {
                 root("home")
-                nav.navigate("review/$id")
+                openMessage(id)
             }
             consumeReview()
         }
@@ -91,21 +98,41 @@ fun TangoApp(
                 composable("home") {
                     Screen {
                         HomeScreen(records, demo, alertsAllowed, notificationAccess,
-                            review = { nav.navigate("review/$it") }, history = { root("history") },
+                            review = { openMessage(it) }, history = { root("history") },
                             setup = { nav.navigate("setup") },
                             demoNotification = {
                                 if (alertsAllowed) { showDemoNotification(); notify("Demo warning sent. No real message was read or hidden.") }
                                 else { requestAlerts(); notify("Allow alerts, then tap the demo notification button again.") }
-                            })
+                            },
+                            previewWarning = { risk -> nav.navigate("animation-preview/${risk.name}") })
                     }
                 }
                 composable("history") {
-                    Screen { HistoryScreen(records) { nav.navigate("review/$it") } }
+                    Screen { HistoryScreen(records) { openMessage(it) } }
                 }
                 composable("settings") {
                     Screen {
                         SettingsScreen(alertsAllowed, notificationAccess, demo, openNotificationAccess, requestAlerts,
                             vpn = { vpnInfo = true }, reset = { model.resetDemo(); root("setup") })
+                    }
+                }
+                composable("animation-preview/{risk}") { backEntry ->
+                    val risk = if (backEntry.arguments?.getString("risk") == MessageRisk.HIGH.name) MessageRisk.HIGH else MessageRisk.MEDIUM
+                    WarningAnimationScreen(DemoRecords.messages.first(), risk) { root("home") }
+                }
+                composable("warning/{id}/{risk}") { backEntry ->
+                    val id = backEntry.arguments?.getString("id") ?: "delivery"
+                    val message = records.firstOrNull { it.id == id }
+                    val risk = if (backEntry.arguments?.getString("risk") == MessageRisk.HIGH.name) MessageRisk.HIGH else MessageRisk.MEDIUM
+                    val review = {
+                        nav.popBackStack()
+                        nav.navigate("review/$id") { launchSingleTop = true }
+                    }
+                    if (message != null && !message.corrected) {
+                        WarningAnimationScreen(message, risk, review)
+                    } else Screen {
+                        Body("There is no active warning for this record.")
+                        PrimaryButton("Review message", onClick = review)
                     }
                 }
                 composable("review/{id}") { backEntry ->
@@ -114,7 +141,10 @@ fun TangoApp(
                         if (message != null) ReviewScreen(message,
                             explanation = { nav.navigate("why/${message.id}") },
                             share = { nav.navigate("share/${message.id}") },
-                            correct = { model.correctMessage(message.id); notify("Marked as not a scam. Demo flag removed; original SMS unchanged.") })
+                            correct = { model.correctMessage(message.id); notify("Marked as not a scam. Demo flag removed; original SMS unchanged.") },
+                            animation = if (!message.corrected && message.risk in setOf(MessageRisk.MEDIUM, MessageRisk.HIGH)) {
+                                { nav.navigate("warning/${message.id}/${message.risk.name}") }
+                            } else null)
                         else Body("Message record not found.")
                     }
                 }

@@ -56,3 +56,27 @@ Spacetime sharing, real notification monitoring, DNS/VPN filtering, reputation s
 - `app/src/main/java/com/tango/app/data/`: fictional records, correction/filter logic, allowlisted threat payload, and saved-state ViewModel.
 - `MainActivity.kt`: lifecycle-aware Android permission checks and demo notification handling.
 - `app/src/test/`: unique-attempt counts, corrections, filters, sharing payload, and defanged-link tests.
+
+
+## Native warning animation
+
+The Android app reuses the extension's character limbs, light-mode suspicious/angry faces, hornet, and roll/pop/slash audio. The sequence runs inside the app, not as an overlay over other applications.
+
+- Medium risk: roll in, pop out limbs, then show the warning clues and protection tip.
+- High risk: hornet emergence/flight, roll in from the opposite side, limb pop, sword slashes splitting the hornet, then warning clues and a protection tip.
+- Low/none and corrected messages: open the review directly without the warning animation.
+- Opening a flagged message from Home, History, or the demo notification triggers the appropriate sequence. The account sample is medium risk; delivery and prize samples are high risk.
+- Home includes explicit medium/high animation previews, independent of your corrections. Message review includes Replay warning animation for active medium/high records.
+- Skip animation advances to the explanation, Sound on/off controls effects, and Android's animation duration scale is respected. Disabling animations jumps directly to the explanation.
+- Playback pauses in the background. Audio stops on pause/exit, and rotation preserves animation progress. Previews do not change hornet counts, messages, or permissions.
+
+### Try it manually
+
+1. Run the app from Android Studio and choose Preview demo protection (or Set up later).
+2. Scroll Home to Animation previews. Try Preview medium-risk animation and Preview high-risk animation.
+3. For high risk, watch the hornet emerge and fly, the character roll in and pop out limbs, and the sword cut the hornet into five pieces. Then select Next to see the protection tip.
+4. Use the top back arrow to return Home. Open Unexpected delivery fee to test the high-risk message entry, or Account verification request for medium risk.
+5. Use Skip animation, mute/unmute effects, and background/return to the app. In Android Developer options, set Animator duration scale to Animation off and confirm the explanation appears directly.
+6. Mark a message as not a scam, then reopen it from History: the corrected record should open without an attack sequence. Home's explicit demo previews still work.
+
+This is a native frontend animation with fictional sample messages. Real notification scanning and backend message classification remain separate integrations.

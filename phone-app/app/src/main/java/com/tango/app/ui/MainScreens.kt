@@ -52,7 +52,7 @@ private fun PermissionCard(icon: ImageVector, title: String, status: String, act
 
 @Composable
 fun HomeScreen(records: List<MessageRecord>, demo: Boolean, alerts: Boolean, access: Boolean,
-               review: (String) -> Unit, history: () -> Unit, setup: () -> Unit, demoNotification: () -> Unit) {
+               review: (String) -> Unit, history: () -> Unit, setup: () -> Unit, demoNotification: () -> Unit, previewWarning: ((MessageRisk) -> Unit)? = null) {
     Heading("Your protection", if (demo) "On guard. In the\nbackground." else "Your protection,\nat a glance.")
     Badge("Demo messages · simulated findings", Pink, PinkTint)
     Panel {
@@ -87,6 +87,12 @@ fun HomeScreen(records: List<MessageRecord>, demo: Boolean, alerts: Boolean, acc
     }
     if (recent.isEmpty()) Body("No flagged messages. Your corrections are reflected in History.")
     SecondaryButton("Show demo warning notification", AppIcons.Notifications, demoNotification)
+    if (previewWarning != null) {
+        Text("Animation previews", style = MaterialTheme.typography.titleLarge)
+        SecondaryButton("Preview medium-risk animation") { previewWarning(MessageRisk.MEDIUM) }
+        SecondaryButton("Preview high-risk animation") { previewWarning(MessageRisk.HIGH) }
+    }
+
     Body("Fictional messages only. Real message scanning and VPN filtering are not running.")
 }
 
