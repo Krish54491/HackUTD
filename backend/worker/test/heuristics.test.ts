@@ -46,7 +46,7 @@ describe('signals + scoring', () => {
 
   it('rates the synthetic scam checkout high', () => {
     const s = signalsFromHtml(SCAM_HTML, 'velora-outlet.example');
-    const h = scoreSignals('velora-outlet.example', s, { rdap: { age_days: 12 }, feeds: { openphish: false, urlhaus: false } });
+    const h = scoreSignals('velora-outlet.example', s, { rdap: { age_days: 12 }, feeds: { openphish: false, phishing_db: false } });
     expect(levelFromScore(h.score)).toBe('high');
     const ids = h.findings.map(f => f.id);
     expect(ids).toEqual(expect.arrayContaining(['payment_mismatch', 'missing_policies', 'age', 'risky_payment']));
@@ -55,7 +55,7 @@ describe('signals + scoring', () => {
   });
 
   it('a blocklist hit is always high', () => {
-    const h = scoreSignals('x.example', {}, { feeds: { openphish: true, urlhaus: false } });
+    const h = scoreSignals('x.example', {}, { feeds: { openphish: true, phishing_db: false } });
     expect(h.hardHigh).toBe(true);
     expect(h.score).toBeGreaterThanOrEqual(95);
   });
@@ -64,7 +64,7 @@ describe('signals + scoring', () => {
     const h = scoreSignals(
       'shop.example',
       { is_checkout: true, has_payment_fields: true, form_action_domains: ['api.stripe.com'], policy_links: { refund: true, contact: true, privacy: true, shipping: true } },
-      { rdap: { age_days: 4000 }, feeds: { openphish: false, urlhaus: false } }
+      { rdap: { age_days: 4000 }, feeds: { openphish: false, phishing_db: false } }
     );
     expect(levelFromScore(h.score)).toBe('none');
   });

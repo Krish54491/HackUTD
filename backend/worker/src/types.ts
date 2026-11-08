@@ -24,7 +24,7 @@ export type Finding = { id: string; title: string; detail: string; severity: Sev
 
 export type ServerEvidence = {
   rdap?: { created?: string; age_days?: number; registrar?: string; error?: string };
-  feeds?: { openphish: boolean; urlhaus: boolean; error?: string };
+  feeds?: { openphish: boolean; phishing_db: boolean; error?: string };
   safe_browsing?: { checked: boolean; threats: string[]; error?: string };
   lookalike?: { brand: string; official: string; how: string } | null;
   fetched_page?: { ok: boolean; status?: number; error?: string };

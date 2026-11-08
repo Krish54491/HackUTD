@@ -165,6 +165,9 @@ async function main() {
   const identityHex = identity.replace(/^0x/i, '').toLowerCase();
   const st = new Spacetime(HOST, DB, token);
   console.log(`[worker] ${HOST}/${DB} as ${identityHex.slice(0, 12)}…  LLM=${USE_LLM ? 'on' : 'off (heuristics only)'}`);
+  if (!USE_LLM && process.env.DISABLE_LLM !== '1') {
+    console.log(`[worker] No ANTHROPIC_API_KEY found. Put it in ${process.cwd()}\.env (copy .env.example) and restart.`);
+  }
   await waitForRegistration(st, identityHex);
   await refreshFeeds(true);
   console.log('[worker] ready');

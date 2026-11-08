@@ -29,8 +29,8 @@ export function scoreSignals(domain: string, s: ClientSignals, ev: ServerEvidenc
   const shopping = !!(s.is_checkout || s.has_payment_fields);
 
   // --- blocklists (hard evidence) ---
-  if (ev.feeds?.openphish || ev.feeds?.urlhaus) {
-    add({ id: 'blocklist', title: 'On a scam/phishing list', detail: `This domain appears on ${[ev.feeds.openphish && 'OpenPhish', ev.feeds.urlhaus && 'URLhaus'].filter(Boolean).join(' and ')}.`, severity: 'high', points: 100 });
+  if (ev.feeds?.openphish || ev.feeds?.phishing_db) {
+    add({ id: 'blocklist', title: 'On a scam/phishing list', detail: `This domain appears on ${[ev.feeds.openphish && 'OpenPhish', ev.feeds.phishing_db && 'Phishing.Database'].filter(Boolean).join(' and ')}.`, severity: 'high', points: 100 });
   }
   if (ev.safe_browsing?.threats.length) {
     add({ id: 'safe_browsing', title: 'Flagged by Google Safe Browsing', detail: `Listed for ${ev.safe_browsing.threats.join(', ').toLowerCase().replace(/_/g, ' ')}.`, severity: 'high', points: 100 });
