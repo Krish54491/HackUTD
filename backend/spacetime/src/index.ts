@@ -313,6 +313,7 @@ export const request_listing_check = spacetimedb.reducer(
         location: clip(it.location, 120),
         price: clip(it.price, 60),
         snippet: clip(it.snippet, 500),
+        description: clip(it.description, 3000),
         url: clip(it.url, 300),
       };
       const v = ctx.db.listing_verdict.key.find(item.key);

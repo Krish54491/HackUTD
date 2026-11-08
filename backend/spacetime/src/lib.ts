@@ -51,6 +51,8 @@ export type ListingItem = {
   location?: string;
   price?: string;
   snippet?: string;
+  /** Full listing description, only when the user has the listing open. */
+  description?: string;
   url?: string;
 };
 export type ListingResult = { key: string; suspicious: boolean; score: number; reason: string };

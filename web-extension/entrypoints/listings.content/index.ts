@@ -5,13 +5,16 @@
  */
 import { browser } from 'wxt/browser';
 import { defineContentScript } from 'wxt/utils/define-content-script';
-import { extractCards, siteForHost, type ExtractedCard } from '@/lib/listing-sites';
+import { extractCards, extractDetail, siteForHost, type ExtractedCard } from '@/lib/listing-sites';
 import { sha256Hex } from '@/lib/domain';
 import { bg } from '@/lib/messaging';
 import type { ListingItem, ListingResult, TabMessage } from '@/lib/types';
 
 const HIDDEN_ATTR = 'data-protego-hidden';
 const STUB_CLASS = 'protego-listing-stub';
+const BANNER_CLASS = 'protego-listing-banner';
+/** Bump when the classifier changes, so old cached "looks fine" verdicts aren't reused. */
+const KEY_VERSION = 'v2';
 
 export default defineContentScript({
   // All of LinkedIn (not just /jobs): it's a single-page app, so users often arrive from /feed.
@@ -31,7 +34,7 @@ export default defineContentScript({
     async function keyFor(c: ExtractedCard) {
       const cached = keyOf.get(c.el);
       if (cached) return cached;
-      const k = (await sha256Hex(`${site!.site}|${c.id}|${c.title}|${c.company}`)).slice(0, 40);
+      const k = (await sha256Hex(`${KEY_VERSION}|${site!.site}|${c.id}|${c.title}|${c.company}`)).slice(0, 40);
       keyOf.set(c.el, k);
       return k;
     }
@@ -64,12 +67,39 @@ export default defineContentScript({
       c.el.insertAdjacentElement('beforebegin', stub);
     }
 
+    /** Warning over the open listing's description (the card list may not be visible). */
+    function warnDetail(el: HTMLElement, id: string, v: ListingResult) {
+      if (document.querySelector(`.${BANNER_CLASS}[data-id="${CSS.escape(id)}"]`)) return;
+      const b = document.createElement('div');
+      b.className = BANNER_CLASS;
+      b.dataset.id = id;
+      b.setAttribute('role', 'alert');
+      b.setAttribute('style', [
+        'display:flex', 'align-items:flex-start', 'gap:10px', 'padding:12px 14px', 'margin:0 0 12px',
+        'border:2px solid #E20074', 'border-radius:10px', 'background:#fff5fa', 'color:#15151a',
+        'font:400 13px/1.45 Inter,Segoe UI,system-ui,sans-serif',
+      ].join(';'));
+      const icon = document.createElement('img');
+      icon.src = (browser.runtime.getURL as (p: string) => string)('/characters/angry.png');
+      icon.setAttribute('style', 'width:44px;height:44px;border-radius:50%;flex:none');
+      icon.alt = '';
+      const text = document.createElement('div');
+      const h = document.createElement('b');
+      h.textContent = 'Protego: this listing looks like a scam';
+      h.style.display = 'block';
+      const p = document.createElement('span');
+      p.textContent = `${v.reason || 'It shows several common scam warning signs.'} Don't send money, ID or bank details, and don't move the conversation off this site.`;
+      text.append(h, p);
+      b.append(icon, text);
+      el.insertAdjacentElement('beforebegin', b);
+    }
+
     function unhideAll() {
       document.querySelectorAll<HTMLElement>(`[${HIDDEN_ATTR}="1"]`).forEach(el => {
         el.style.removeProperty('display');
         el.removeAttribute(HIDDEN_ATTR);
       });
-      document.querySelectorAll(`.${STUB_CLASS}`).forEach(s => s.remove());
+      document.querySelectorAll(`.${STUB_CLASS}, .${BANNER_CLASS}`).forEach(s => s.remove());
     }
 
     async function scan() {
@@ -97,6 +127,35 @@ export default defineContentScript({
         pending.add(key);
         fresh.push({ key, title: c.title, company: c.company, location: c.location, price: c.price, snippet: c.snippet, url: c.url });
       }
+
+      // The open listing: its full description carries most of the scam tells.
+      const d = extractDetail(site!, new URL(location.href));
+      // SPA: the user opened another listing, so the old warning no longer applies.
+      document.querySelectorAll<HTMLElement>(`.${BANNER_CLASS}`).forEach(b => b.dataset.id !== d?.id && b.remove());
+      let detailKey: string | null = null;
+      if (d) {
+        detailKey = (await sha256Hex(`${KEY_VERSION}|${site!.site}|detail|${d.id}|${d.title}|${d.description.length}`)).slice(0, 40);
+        const v = verdicts.get(detailKey);
+        if (v?.suspicious) applyDetail(v);
+        else if (!v && !pending.has(detailKey)) {
+          pending.add(detailKey);
+          fresh.unshift({ key: detailKey, title: d.title || c0Title(d.id), company: d.company, price: d.price, description: d.description, url: location.href.split('?')[0] });
+        }
+      }
+      function c0Title(id: string) {
+        return cards.find(c => c.id === id)?.title ?? 'Open listing';
+      }
+      /** Suspicious open listing: banner on the description, and hide its card in the list. */
+      function applyDetail(v: ListingResult) {
+        if (!d) return;
+        warnDetail(d.el, d.id, v);
+        for (const c of cards) if (c.id === d.id && c.el.getAttribute(HIDDEN_ATTR) !== 'revealed') hide(c, v);
+        if (!blocked.has(v.key)) {
+          const b = { key: v.key, title: d.title || c0Title(d.id), reason: v.reason };
+          blocked.set(v.key, b);
+          rehidden.push(b);
+        }
+      }
       if (rehidden.length) await bg({ type: 'LISTINGS_BLOCKED', site: site!.site, blocked: rehidden }).catch(() => {});
       if (!fresh.length) return;
 
@@ -111,6 +170,14 @@ export default defineContentScript({
           const newlyBlocked: { key: string; title: string; reason: string }[] = [];
           for (const v of res.results) {
             verdicts.set(v.key, v);
+            if (v.key === detailKey) {
+              if (v.suspicious) {
+                const before = rehidden.length;
+                applyDetail(v);
+                newlyBlocked.push(...rehidden.splice(before));
+              }
+              continue;
+            }
             const c = byKey.get(v.key);
             if (v.suspicious && c) {
               hide(c, v);
@@ -137,7 +204,7 @@ export default defineContentScript({
       timer = ctx.setTimeout(() => void scan(), 900);
     };
     const observer = new MutationObserver(muts => {
-      if (muts.some(m => [...m.addedNodes].some(n => n instanceof HTMLElement && !n.classList.contains(STUB_CLASS)))) schedule();
+      if (muts.some(m => [...m.addedNodes].some(n => n instanceof HTMLElement && !n.classList.contains(STUB_CLASS) && !n.classList.contains(BANNER_CLASS)))) schedule();
     });
     observer.observe(document.body, { childList: true, subtree: true });
     ctx.onInvalidated(() => observer.disconnect());

@@ -19,6 +19,14 @@ export type ListingSite = {
   price?: string[];
   snippet?: string[];
   link?: string[];
+  /** The listing the user has open (detail pane or page), where the full description lives. */
+  detail?: {
+    id: (url: URL) => string | null;
+    title: string[];
+    company?: string[];
+    price?: string[];
+    description: string[];
+  };
 };
 
 const attr = (name: string) => (el: Element) => el.getAttribute(name) ?? el.querySelector(`[${name}]`)?.getAttribute(name) ?? null;
@@ -34,18 +42,36 @@ export const LISTING_SITES: ListingSite[] = [
       'div.job-card-container[data-job-id]',
       'ul.jobs-search__results-list > li',
       'div.base-card[data-entity-urn*="jobPosting"]',
+      // LinkedIn rotates class names; any list item linking to a job is a card.
+      'li:has(a[href*="/jobs/view/"])',
     ],
     idFrom: el =>
       attr('data-occludable-job-id')(el) ??
       attr('data-job-id')(el) ??
       attr('data-entity-urn')(el)?.split(':').pop() ??
+      el.querySelector('a[href*="/jobs/view/"]')?.getAttribute('href')?.match(/\/jobs\/view\/(?:[^/]*-)?(\d+)/)?.[1] ??
       null,
-    title: ['.job-card-list__title--link', '.job-card-list__title', '.artdeco-entity-lockup__title', '.base-search-card__title'],
+    title: [
+      '.job-card-list__title--link strong',
+      '.job-card-list__title--link',
+      '.job-card-list__title',
+      '.artdeco-entity-lockup__title',
+      '.base-search-card__title',
+      'a[href*="/jobs/view/"][aria-label]',
+      'a[href*="/jobs/view/"]',
+    ],
     company: ['.artdeco-entity-lockup__subtitle', '.job-card-container__primary-description', '.base-search-card__subtitle'],
     location: ['.job-card-container__metadata-wrapper li', '.artdeco-entity-lockup__caption', '.job-search-card__location'],
     price: ['.job-card-container__metadata-item--salary', '.job-search-card__salary-info', '.artdeco-entity-lockup__metadata'],
     snippet: ['.job-card-container__job-insight-text', '.job-card-list__insight', '.job-posting-benefits__text'],
     link: ['a[href*="/jobs/view/"]', 'a.base-card__full-link'],
+    detail: {
+      id: u => u.searchParams.get('currentJobId') ?? u.pathname.match(/\/jobs\/view\/(?:[^/]*-)?(\d+)/)?.[1] ?? null,
+      title: ['.job-details-jobs-unified-top-card__job-title', '.jobs-unified-top-card__job-title', 'h1.top-card-layout__title', '.jobs-details h1', 'main h1'],
+      company: ['.job-details-jobs-unified-top-card__company-name', '.jobs-unified-top-card__company-name', '.topcard__org-name-link'],
+      price: ['.job-details-jobs-unified-top-card__job-insight', '.salary', '.compensation__salary'],
+      description: ['#job-details', '.jobs-description__content', '.jobs-description-content__text', '.jobs-box__html-content', '.show-more-less-html__markup', '.description__text'],
+    },
   },
   {
     id: 'zillow',
@@ -63,6 +89,12 @@ export const LISTING_SITES: ListingSite[] = [
     snippet: ['[data-test="property-card-details"]', 'ul[class*="HomeDetailsList"]', '[data-test="property-card-description"]'],
     company: ['[class*="PropertyCardDataArea"] div:last-child', '[data-test="property-card-broker"]'],
     link: ['a[data-test="property-card-link"]', 'a[href*="homedetails"]'],
+    detail: {
+      id: u => u.pathname.match(/(\d+)_zpid/)?.[1] ?? u.searchParams.get('zpid'),
+      title: ['h1', '[data-testid="bdp-address"]'],
+      price: ['[data-testid="price"]', 'span[data-testid*="price"]'],
+      description: ['[data-testid="description"]', 'article [class*="Description"]', '.ds-overview-section'],
+    },
   },
   {
     id: 'apartments',
@@ -76,6 +108,12 @@ export const LISTING_SITES: ListingSite[] = [
     snippet: ['.property-amenities', '.property-specials', '.bed-range'],
     company: ['.property-logo[alt]', '.property-phone'],
     link: ['a.property-link', 'a[href*="apartments.com/"]'],
+    detail: {
+      id: u => (/^\/[^/]+\/[a-z0-9]{5,}\/?$/i.test(u.pathname) ? u.pathname.split('/').filter(Boolean).pop() ?? null : null),
+      title: ['h1#propertyName', 'h1'],
+      price: ['.priceBedRangeInfo', '.rentInfoDetail'],
+      description: ['#descriptionSection', '.descriptionSection', 'section[class*="description"]'],
+    },
   },
 ];
 
@@ -90,7 +128,7 @@ export function siteFor(url: URL): ListingSite | null {
   return s && (!s.active || s.active(url)) ? s : null;
 }
 
-function textOf(card: Element, selectors?: string[]): string {
+function textOf(card: ParentNode, selectors?: string[]): string {
   if (!selectors) return '';
   for (const sel of selectors) {
     const el = card.querySelector(sel);
@@ -98,6 +136,26 @@ function textOf(card: Element, selectors?: string[]): string {
     if (t) return t;
   }
   return '';
+}
+
+export type ExtractedDetail = { el: HTMLElement; id: string; title: string; company: string; price: string; description: string };
+
+/** The listing currently open on the page, if the site shows one. */
+export function extractDetail(site: ListingSite, url: URL, root: ParentNode = document): ExtractedDetail | null {
+  const d = site.detail;
+  const id = d?.id(url);
+  if (!d || !id) return null;
+  const el = d.description.map(s => root.querySelector<HTMLElement>(s)).find(Boolean);
+  const description = (el?.innerText || el?.textContent || '').replace(/\s+/g, ' ').trim();
+  if (!el || description.length < 60) return null; // not rendered yet
+  return {
+    el,
+    id,
+    title: textOf(root, d.title),
+    company: textOf(root, d.company),
+    price: textOf(root, d.price),
+    description: description.slice(0, 3000),
+  };
 }
 
 export type ExtractedCard = { el: HTMLElement; id: string; title: string; company: string; location: string; price: string; snippet: string; url: string };

@@ -68,7 +68,8 @@ export async function scan(domain: string, signals: unknown | null, opts: { manu
   const startedAt = Date.now();
   await st.call('request_scan', domain, signals ? JSON.stringify(signals) : '', opts.manual ? 'manual' : 'auto', !!opts.force);
 
-  for (let delay = 1200; Date.now() - startedAt < SCAN_TIMEOUT_MS; delay = Math.min(delay * 1.3, 4000)) {
+  // Most checks finish in 1-3 s now (rules lane), so poll fast at first.
+  for (let delay = 500; Date.now() - startedAt < SCAN_TIMEOUT_MS; delay = Math.min(delay * 1.3, 2500)) {
     await sleep(delay);
     const r = await getReport(domain);
     if (r && r.checked_at_ms >= startedAt - 5000) return r;

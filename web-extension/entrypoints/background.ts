@@ -3,7 +3,7 @@ import { defineBackground } from 'wxt/utils/define-background';
 import * as api from '@/lib/api';
 import { LOCAL_REPORT_TTL_MS } from '@/lib/config';
 import { normalizeDomain } from '@/lib/domain';
-import type { BgMessage, PopupState, RiskLevel, SiteReport, TabMessage, TabState } from '@/lib/types';
+import type { BgMessage, CachedForPage, PopupState, RiskLevel, SiteReport, TabMessage, TabState } from '@/lib/types';
 
 // ---------- small storage helpers ----------
 
@@ -26,6 +26,11 @@ async function cachedReport(domain: string): Promise<SiteReport | null> {
 }
 async function saveReport(report: SiteReport) {
   await local.set({ [`report:${report.domain}`]: { report, savedAt: Date.now() } });
+}
+
+/** The user chose "Continue anyway" for this domain at this risk level (until the browser restarts). */
+async function ackedLevel(domain: string): Promise<RiskLevel | null> {
+  return ((await session.get(`ack:${domain}`))[`ack:${domain}`] as RiskLevel | undefined) ?? null;
 }
 
 async function listingsEnabled(site: string) {
@@ -78,23 +83,28 @@ function checkTab(tabId: number, domain: string, signals: unknown | null, force 
       report ??= await api.scan(domain, signals, { manual: !signals, force });
       await saveReport(report);
     } catch (e) {
-      await setTab(tabId, { domain, scan: { state: 'error', error: (e as Error).message } });
+      const error = (e as Error).message;
+      await setTab(tabId, { domain, scan: { state: 'error', error } });
       await setBadge(tabId, null);
+      await tellTab(tabId, { type: 'SCAN_RESULT', domain, report: null, error });
       return null;
     }
     await setTab(tabId, { domain, scan: { state: 'done', report } });
     await setBadge(tabId, report.risk_level);
-    if (report.risk_level !== 'none') await warnTab(tabId, report);
+    // The page decides what to show: close its "checking" popup, or swap it for the report.
+    await tellTab(tabId, { type: 'SCAN_RESULT', domain, report });
+    if (report.risk_level !== 'none') await countWarning(report);
     return report;
   })().finally(() => inFlight.delete(key));
   inFlight.set(key, p);
   return p;
 }
 
-async function warnTab(tabId: number, report: SiteReport) {
-  const msg: TabMessage = { type: 'SHOW_REPORT', report };
+async function tellTab(tabId: number, msg: TabMessage) {
   await browser.tabs.sendMessage(tabId, msg).catch(() => {});
+}
 
+async function countWarning(report: SiteReport) {
   // One hornet per risky site per day.
   const key = `warned:${report.domain}`;
   const last = (await local.get(key))[key] as number | undefined;
@@ -135,9 +145,15 @@ async function handle(msg: BgMessage, tabId: number | undefined): Promise<unknow
       if (tabId !== undefined) void checkTab(tabId, msg.domain, msg.signals);
       return { ok: true };
 
-    case 'GET_CACHED_REPORT':
+    case 'GET_CACHED_REPORT': {
       // Local only (no network), so the page can raise the modal before it finishes loading.
-      return cachedReport(msg.domain);
+      const out: CachedForPage = { report: await cachedReport(msg.domain), ackedLevel: await ackedLevel(msg.domain) };
+      return out;
+    }
+
+    case 'ACK_SITE':
+      await session.set({ [`ack:${msg.domain}`]: msg.level });
+      return { ok: true };
 
     case 'CHECK_CURRENT_PAGE': {
       const cur = await getTab(msg.tabId);

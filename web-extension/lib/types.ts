@@ -28,6 +28,8 @@ export type ListingItem = {
   location?: string;
   price?: string;
   snippet?: string;
+  /** Full description of the listing the user has open. */
+  description?: string;
   url?: string;
 };
 export type ListingResult = { key: string; suspicious: boolean; score: number; reason: string };
@@ -42,6 +44,7 @@ export type TabState = {
 export type BgMessage =
   | { type: 'PAGE_SIGNALS'; domain: string; signals: unknown }
   | { type: 'GET_CACHED_REPORT'; domain: string }
+  | { type: 'ACK_SITE'; domain: string; level: RiskLevel }
   | { type: 'CHECK_CURRENT_PAGE'; tabId: number; domain: string; force?: boolean }
   | { type: 'MANUAL_CHECK'; input: string; force?: boolean }
   | { type: 'GET_POPUP_STATE'; tabId?: number; domain?: string }
@@ -53,8 +56,12 @@ export type BgMessage =
 
 /** Messages sent from the background to content scripts. */
 export type TabMessage =
-  | { type: 'SHOW_REPORT'; report: SiteReport }
+  /** Sent for every finished check of the tab's site, clean or not. */
+  | { type: 'SCAN_RESULT'; domain: string; report: SiteReport | null; error?: string }
   | { type: 'LISTINGS_ENABLED_CHANGED'; enabled: boolean };
+
+/** What the page needs on load: a locally cached report, and the risk level the user already chose to continue past. */
+export type CachedForPage = { report: SiteReport | null; ackedLevel: RiskLevel | null };
 
 export type PopupState = {
   domain: string | null;

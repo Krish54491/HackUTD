@@ -15,17 +15,20 @@ import { checkSafeBrowsing } from './signals/safebrowsing';
 import { detectLookalike } from './signals/lookalike';
 import { fetchSignals } from './signals/fetchPage';
 import { scoreSignals } from './heuristics';
-import { analyzeSite, classifyListings, heuristicReport, type ListingInput } from './agent';
+import { analyzeSite, classifyListings, heuristicReport, triage, type ListingInput } from './agent';
 import type { ClientSignals, Report, ServerEvidence } from './types';
 
 const HOST = process.env.SPACETIME_HOST ?? 'https://maincloud.spacetimedb.com';
 const DB = process.env.SPACETIME_DB ?? 'protego';
-const POLL_MS = Number(process.env.POLL_MS ?? 1500);
-const MAX_PARALLEL = Number(process.env.MAX_PARALLEL ?? 3);
+const POLL_MS = Number(process.env.POLL_MS ?? 750);
+/** Scans and listing batches get separate slots so a slow one never queues the other. */
+const MAX_SCANS = Number(process.env.MAX_PARALLEL ?? 6);
+const MAX_BATCHES = Number(process.env.MAX_BATCHES ?? 4);
 const IDENTITY_FILE = '.worker-identity.json';
 const USE_LLM = !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN) && process.env.DISABLE_LLM !== '1';
 
 const inFlight = new Set<string>();
+const count = (prefix: string) => [...inFlight].filter(k => k.startsWith(prefix)).length;
 
 async function loadIdentity(): Promise<{ identity: string; token: string }> {
   if (process.env.WORKER_TOKEN && process.env.WORKER_IDENTITY) {
@@ -70,8 +73,8 @@ async function processScan(st: Spacetime, req: { domain: string; signals_json: s
       lookupRdap(domain),
       checkSafeBrowsing(domain),
       needsFetch ? fetchSignals(domain) : Promise.resolve(null),
-      refreshFeeds(),
     ]);
+    void refreshFeeds(); // every 30 min, in the background: never on a user's critical path
     evidence.rdap = rdap;
     evidence.safe_browsing = sb;
     evidence.feeds = checkFeeds(domain);
@@ -82,16 +85,17 @@ async function processScan(st: Spacetime, req: { domain: string; signals_json: s
     }
 
     const h = scoreSignals(domain, signals, evidence);
+    const lane = USE_LLM ? triage(h, evidence) : 'rules';
     let report: Report;
-    if (USE_LLM) {
+    if (lane === 'rules') {
+      report = heuristicReport(domain, h, evidence);
+    } else {
       try {
-        report = await analyzeSite(domain, signals, evidence, h);
+        report = await analyzeSite(domain, signals, evidence, h, lane);
       } catch (e) {
         console.warn(`[scan] ${domain}: LLM failed, using heuristics: ${(e as Error).message}`);
-        report = heuristicReport(domain, h);
+        report = heuristicReport(domain, h, evidence);
       }
-    } else {
-      report = heuristicReport(domain, h);
     }
 
     await st.call(
@@ -105,7 +109,7 @@ async function processScan(st: Spacetime, req: { domain: string; signals_json: s
       JSON.stringify(report.reasons),
       JSON.stringify({ ...evidence, heuristic_score: h.score })
     );
-    console.log(`[scan] ${domain}: ${report.risk_level} (${report.score}) in ${Date.now() - started}ms`);
+    console.log(`[scan] ${domain}: ${report.risk_level} (${report.score}) via ${lane} in ${Date.now() - started}ms`);
   } catch (e) {
     console.error(`[scan] ${domain} failed:`, e);
     await st.call('fail_scan', domain, (e as Error).message).catch(() => {});
@@ -122,7 +126,7 @@ async function processBatch(st: Spacetime, b: { id: string; site: string; items_
   }
   try {
     const items: ListingInput[] = JSON.parse(b.items_json);
-    const verdicts = USE_LLM ? await classifyListings(b.site, items) : items.map(i => ({ key: i.key, suspicious: false, score: 0, reason: '' }));
+    const verdicts = await classifyListings(b.site, items, USE_LLM); // rules always run, even without an API key
     await st.call('submit_listing_verdicts', b.id, JSON.stringify(verdicts));
     const flagged = verdicts.filter(v => v.suspicious).length;
     console.log(`[listings] ${b.site} batch ${b.id.slice(0, 8)}: ${flagged}/${items.length} suspicious`);
@@ -143,7 +147,7 @@ async function tick(st: Spacetime) {
   );
   for (const s of scans) {
     const ready = s.status === 'pending' || (s.status === 'processing' && now - Number(s.claimed_at_ms) > STALE_MS);
-    if (!ready || inFlight.has(`s:${s.domain}`) || inFlight.size >= MAX_PARALLEL) continue;
+    if (!ready || inFlight.has(`s:${s.domain}`) || count('s:') >= MAX_SCANS) continue;
     inFlight.add(`s:${s.domain}`);
     processScan(st, s).finally(() => inFlight.delete(`s:${s.domain}`));
   }
@@ -152,7 +156,7 @@ async function tick(st: Spacetime) {
     "SELECT * FROM listing_batch WHERE status = 'pending'"
   );
   for (const b of batches) {
-    if (inFlight.has(`b:${b.id}`) || inFlight.size >= MAX_PARALLEL + 2) continue;
+    if (inFlight.has(`b:${b.id}`) || count('b:') >= MAX_BATCHES) continue;
     inFlight.add(`b:${b.id}`);
     processBatch(st, b).finally(() => inFlight.delete(`b:${b.id}`));
   }

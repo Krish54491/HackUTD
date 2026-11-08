@@ -193,6 +193,51 @@
   box-shadow: none;
   animation: none;
 }
+/* "Hold on while I check" popup */
+.pg-check { width: min(440px, 100%); }
+.pg-check-body { display: flex; flex-direction: column; align-items: center; padding: 26px 28px 24px; text-align: center; }
+.pg-check-char { line-height: 0; }
+.pg-bob { animation: pg-bob 1.6s ease-in-out infinite; }
+.pg-bubble {
+  position: relative;
+  margin: 18px 0 0;
+  padding: 14px 18px;
+  max-width: 340px;
+  background: var(--pg-soft);
+  border: 1px solid var(--pg-line);
+  border-radius: 14px;
+}
+.pg-bubble::before {
+  content: '';
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translateX(-50%) rotate(45deg);
+  background: inherit;
+  border-left: 1px solid var(--pg-line);
+  border-top: 1px solid var(--pg-line);
+}
+.pg-bubble-safe { background: #e5f6ec; border-color: #bfe6cf; }
+.pg-bubble-title { position: relative; margin: 0; font: 800 17px/1.3 var(--pg-font); letter-spacing: -0.01em; }
+.pg-bubble-sub { position: relative; margin: 4px 0 0; font-size: 13px; color: var(--pg-muted); word-break: break-word; }
+.pg-bubble-sub b { color: var(--pg-ink); }
+.pg-check-step { display: flex; align-items: center; gap: 8px; margin: 16px 0 0; font-size: 12px; color: var(--pg-muted); }
+.pg-check-step .pg-spinner { color: var(--pg-pink); }
+.pg-check-btn { margin-top: 18px; }
+.pg-check-skip { margin-top: 14px; font-size: 12px; }
+.pg-drain {
+  width: 160px;
+  height: 4px;
+  margin-top: 18px;
+  border-radius: 2px;
+  background: var(--pg-green);
+  transform-origin: left;
+  animation: pg-drain linear forwards;
+}
+@keyframes pg-bob { 50% { transform: translateY(-5px); } }
+@keyframes pg-drain { to { transform: scaleX(0); } }
 @media (max-width: 560px) {
   .pg-modal-body { grid-template-columns: 1fr; }
   .pg-modal-side { order: -1; }
@@ -202,7 +247,7 @@
 @keyframes pg-fade { from { opacity: 0; } }
 @keyframes pg-pop { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
 @media (prefers-reduced-motion: reduce) {
-  .pg-backdrop, .pg-modal { animation: none; }
+  .pg-backdrop, .pg-modal, .pg-bob { animation: none; }
   .pg-bar-arrow { transition: none; }
 }
 
