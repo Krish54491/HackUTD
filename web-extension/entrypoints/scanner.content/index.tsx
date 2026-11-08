@@ -22,6 +22,7 @@ import { SiteCheck, SAFE_CLOSE_MS, type CheckView } from '@/components/SiteCheck
 import { collectSignals } from '@/lib/signals';
 import { scannableDomain } from '@/lib/domain';
 import { blockPage } from '@/lib/block-page';
+import { createTopLayer, type TopLayer } from '@/lib/top-layer';
 import { bg } from '@/lib/messaging';
 import type { CachedForPage, RiskLevel, SiteReport, TabMessage } from '@/lib/types';
 import '@/components/protego.css';
@@ -53,12 +54,17 @@ export default defineContentScript({
     let ui: ShadowRootContentScriptUi<ReactDOM.Root> | null = null;
     let mounting: Promise<void> | null = null;
     let unblock = () => {};
+    let layer: TopLayer | null = null;
 
     const ensureMounted = (): Promise<void> => {
       if (mounting) return mounting;
+      // Inside our own modal <dialog>: the browser's top layer, above every z-index on the page.
+      const l = (layer = createTopLayer());
       const p: Promise<void> = createShadowRootUi(ctx, {
         name: 'protego-report',
         position: 'modal',
+        anchor: l.el,
+        append: 'last',
         zIndex: 2147483647,
         isolateEvents: true,
         onMount(container, _shadow, host) {
@@ -72,6 +78,7 @@ export default defineContentScript({
       }).then(u => {
         if (mounting !== p) return; // closed before it finished mounting
         ui = u;
+        l.open(); // in the document and the top layer first, so blockPage sees the real ancestors
         u.mount();
       });
       return (mounting = p);
@@ -107,6 +114,8 @@ export default defineContentScript({
       mounting = null;
       ui?.remove();
       ui = null;
+      layer?.destroy();
+      layer = null;
     }
 
     function acknowledge(report: SiteReport) {

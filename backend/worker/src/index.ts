@@ -15,7 +15,8 @@ import { checkSafeBrowsing } from './signals/safebrowsing';
 import { detectLookalike } from './signals/lookalike';
 import { fetchSignals } from './signals/fetchPage';
 import { scoreSignals } from './heuristics';
-import { analyzeSite, classifyListings, heuristicReport, triage, type ListingInput } from './agent';
+import { analyzeSite, classifyListings, heuristicReport, triage, type ListingInput, type TraceStep } from './agent';
+import { AGENT_MODEL, FALLBACK_MODEL, FAST_MODEL, hasNvidiaKey } from './nemotron';
 import type { ClientSignals, Report, ServerEvidence } from './types';
 
 const HOST = process.env.SPACETIME_HOST ?? 'https://maincloud.spacetimedb.com';
@@ -25,7 +26,8 @@ const POLL_MS = Number(process.env.POLL_MS ?? 750);
 const MAX_SCANS = Number(process.env.MAX_PARALLEL ?? 6);
 const MAX_BATCHES = Number(process.env.MAX_BATCHES ?? 4);
 const IDENTITY_FILE = '.worker-identity.json';
-const USE_LLM = !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN) && process.env.DISABLE_LLM !== '1';
+const USE_LLM = hasNvidiaKey() && process.env.DISABLE_LLM !== '1';
+const EVIDENCE_MAX = 23_000; // module clips evidence_json at 24k
 
 const inFlight = new Set<string>();
 const count = (prefix: string) => [...inFlight].filter(k => k.startsWith(prefix)).length;
@@ -87,11 +89,15 @@ async function processScan(st: Spacetime, req: { domain: string; signals_json: s
     const h = scoreSignals(domain, signals, evidence);
     const lane = USE_LLM ? triage(h, evidence) : 'rules';
     let report: Report;
+    let agent: { model: string; lane: string; trace: TraceStep[] } | undefined;
     if (lane === 'rules') {
       report = heuristicReport(domain, h, evidence);
     } else {
       try {
-        report = await analyzeSite(domain, signals, evidence, h, lane);
+        const out = await analyzeSite(domain, signals, evidence, h, lane);
+        report = out.report;
+        agent = { model: out.model, lane, trace: out.trace };
+        logTrace(domain, out.trace);
       } catch (e) {
         console.warn(`[scan] ${domain}: LLM failed, using heuristics: ${(e as Error).message}`);
         report = heuristicReport(domain, h, evidence);
@@ -107,12 +113,34 @@ async function processScan(st: Spacetime, req: { domain: string; signals_json: s
       report.headline,
       report.summary,
       JSON.stringify(report.reasons),
-      JSON.stringify({ ...evidence, heuristic_score: h.score })
+      evidenceJson({ ...evidence, heuristic_score: h.score, agent })
     );
     console.log(`[scan] ${domain}: ${report.risk_level} (${report.score}) via ${lane} in ${Date.now() - started}ms`);
   } catch (e) {
     console.error(`[scan] ${domain} failed:`, e);
     await st.call('fail_scan', domain, (e as Error).message).catch(() => {});
+  }
+}
+
+/** Stored with the report so anyone can see how the agent reached its verdict. */
+function evidenceJson(ev: Record<string, unknown> & { agent?: { trace: TraceStep[] } }): string {
+  let json = JSON.stringify(ev);
+  if (json.length > EVIDENCE_MAX && ev.agent) {
+    const trace = ev.agent.trace.map(t => (t.step === 'tool' ? { ...t, preview: t.preview.slice(0, 60) } : t.step === 'notes' ? { ...t, text: t.text.slice(0, 400) } : t));
+    json = JSON.stringify({ ...ev, agent: { ...ev.agent, trace } });
+  }
+  return json.length > EVIDENCE_MAX ? JSON.stringify({ ...ev, agent: { truncated: true } }) : json;
+}
+
+function logTrace(domain: string, trace: TraceStep[]) {
+  for (const t of trace) {
+    if (t.step === 'plan') console.log(`[agent] ${domain} plan: ${t.steps.map(s => s.tool).join(', ')} | ${t.hypotheses.join(' / ').slice(0, 120)}`);
+    else if (t.step === 'tool') {
+      const mark = { baseline: '·', planned: '→', 'follow-up': '↪' }[t.phase];
+      console.log(`[agent] ${domain}   ${mark} ${t.tool}(${JSON.stringify(t.args).slice(0, 60)}) ${t.cached ? 'reused' : `${t.ok ? 'ok' : 'ERR'} ${t.ms}ms`}`);
+    }
+    else if (t.step === 'verdict') console.log(`[agent] ${domain} verdict ${t.score} (${t.ms}ms)`);
+    else if (t.step === 'error') console.log(`[agent] ${domain} ${t.where} error: ${t.message.slice(0, 160)}`);
   }
 }
 
@@ -168,9 +196,9 @@ async function main() {
   const { identity, token } = await loadIdentity();
   const identityHex = identity.replace(/^0x/i, '').toLowerCase();
   const st = new Spacetime(HOST, DB, token);
-  console.log(`[worker] ${HOST}/${DB} as ${identityHex.slice(0, 12)}…  LLM=${USE_LLM ? 'on' : 'off (heuristics only)'}`);
+  console.log(`[worker] ${HOST}/${DB} as ${identityHex.slice(0, 12)}…  Nemotron=${USE_LLM ? `on (agent ${AGENT_MODEL}, fallback ${FALLBACK_MODEL}, listings ${FAST_MODEL})` : 'off (rules only)'}`);
   if (!USE_LLM && process.env.DISABLE_LLM !== '1') {
-    console.log(`[worker] No ANTHROPIC_API_KEY found. Put it in ${process.cwd()}\.env (copy .env.example) and restart.`);
+    console.log(`[worker] No NVIDIA_API_KEY found. Put it in ${process.cwd()}\.env (copy .env.example) and restart.`);
   }
   await waitForRegistration(st, identityHex);
   await refreshFeeds(true);

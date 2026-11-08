@@ -5,7 +5,8 @@ export async function lookupRdap(domain: string): Promise<NonNullable<ServerEvid
   const registrable = registrableDomain(domain);
   try {
     const res = await fetch(`https://rdap.org/domain/${encodeURIComponent(registrable)}`, {
-      headers: { Accept: 'application/rdap+json' },
+      // rdap.org answers 403 to Node's default user agent.
+      headers: { Accept: 'application/rdap+json', 'User-Agent': 'Mozilla/5.0 (compatible; ProtegoScanner/1.0)' },
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return { error: `RDAP HTTP ${res.status}` };

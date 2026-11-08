@@ -269,7 +269,7 @@ export const submit_report = spacetimedb.reducer(
       headline: clip(args.headline, 200),
       summary: clip(args.summary, 2000),
       reasons_json: clip(args.reasons_json, 8000),
-      evidence_json: clip(args.evidence_json, 8000),
+      evidence_json: clip(args.evidence_json, 24_000), // includes the agent trace
       checked_at_ms: now,
       expires_at_ms: now + BigInt(REPORT_TTL_MS),
     };
