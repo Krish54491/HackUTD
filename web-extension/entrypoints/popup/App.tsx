@@ -1,55 +1,278 @@
-import { useEffect, useState } from 'react';
+/**
+ * Toolbar popup.
+ *
+ * Opening it always starts from the CURRENT TAB (nothing from a previous
+ * popup session is kept, so closing and reopening returns here):
+ *   - listing site (LinkedIn Jobs, Zillow, Apartments.com) -> listings popup (mockup image-2)
+ *   - any other website -> that page's security result:
+ *       no risk -> "No security issues found" (mockup image.png)
+ *       risk    -> the full security report (mockup image-1)
+ *       still checking -> checking screen
+ *     each with a link to the manual checker
+ *   - no website (new tab, chrome:// pages) -> manual checker (mockup image-3)
+ */
+import { useEffect, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 import { bg } from '@/lib/messaging';
 import { scannableDomain } from '@/lib/domain';
 import { siteFor } from '@/lib/listing-sites';
 import type { PopupState, SiteReport } from '@/lib/types';
-import { Character, GlobeIcon, LEVEL_LABEL, Logo, RiskBar, SeverityIcon, moodFor } from '@/components/ui';
-import { timeAgo } from '@/components/RiskReport';
+import { Character, GlobeIcon, Logo } from '@/components/ui';
+import { RiskReport, timeAgo } from '@/components/RiskReport';
 
 type View =
   | { name: 'loading' }
-  | { name: 'check' }
-  | { name: 'result'; report: SiteReport }
+  | { name: 'page' } // the current tab's result
+  | { name: 'checker' }
+  | { name: 'manual'; report: SiteReport } // result of a manual check from the checker
   | { name: 'listings' };
+
+const close = () => window.close();
 
 export default function App() {
   const [view, setView] = useState<View>({ name: 'loading' });
   const [state, setState] = useState<PopupState | null>(null);
   const [tabId, setTabId] = useState<number | undefined>();
+  const [domain, setDomain] = useState<string | null>(null);
   const [listingSite, setListingSite] = useState<string | null>(null);
   const [listingsOn, setListingsOn] = useState(true);
-  const [input, setInput] = useState('');
-  const [checking, setChecking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const refresh = async (id = tabId, d = domain) => {
+    const s = await bg<PopupState>({ type: 'GET_POPUP_STATE', tabId: id, domain: d ?? undefined }).catch(
+      () => ({ domain: d, tab: null, hornets: state?.hornets ?? 0 }) as PopupState
+    );
+    setState(s);
+    return s;
+  };
 
   useEffect(() => {
     (async () => {
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-      const domain = scannableDomain(tab?.url);
+      const d = scannableDomain(tab?.url);
       setTabId(tab?.id);
-      setInput(domain ?? '');
+      setDomain(d);
       const site = tab?.url ? siteFor(new URL(tab.url)) : null;
       setListingSite(site?.site ?? null);
-      const s = await bg<PopupState>({ type: 'GET_POPUP_STATE', tabId: tab?.id, domain: domain ?? undefined }).catch(
-        () => ({ domain, tab: null, hornets: 0 }) as PopupState
-      );
-      setState(s);
+      const s = await refresh(tab?.id, d);
+
       if (site) {
         setListingsOn(s.tab?.listings?.enabled ?? (await bg<boolean>({ type: 'GET_LISTINGS_ENABLED', site: site.site }).catch(() => true)));
         setView({ name: 'listings' });
+      } else if (d && tab?.id !== undefined) {
+        setView({ name: 'page' });
+        // Page not checked yet (e.g. it was open before Protego was installed): check it now.
+        if (!s.tab || s.tab.scan.state === 'idle' || s.tab.scan.state === 'error') {
+          await bg({ type: 'CHECK_CURRENT_PAGE', tabId: tab.id, domain: d }).catch(() => {});
+          await refresh(tab.id, d);
+        }
       } else {
-        setView({ name: 'check' });
+        setView({ name: 'checker' });
       }
     })();
   }, []);
 
-  async function runCheck(force = false) {
+  // While the current page is being checked, keep the popup live.
+  const scanState = state?.tab?.scan.state;
+  useEffect(() => {
+    if (view.name !== 'page' || scanState !== 'checking') return;
+    const t = setInterval(() => void refresh(), 1200);
+    return () => clearInterval(t);
+  }, [view.name, scanState]);
+
+  const hornets = state?.hornets ?? 0;
+  const toChecker = () => setView({ name: 'checker' });
+  const toPage = domain && !listingSite ? () => setView({ name: 'page' }) : null;
+  const leave = () => {
+    if (tabId !== undefined) void bg({ type: 'LEAVE_SITE', tabId }).finally(close);
+  };
+
+  if (view.name === 'loading') {
+    return (
+      <div className="pg-popup">
+        <div className="pg-popup-body pg-center" style={{ padding: 40 }}>
+          <div className="pg-spinner" style={{ margin: '0 auto', color: 'var(--pg-pink)' }} />
+        </div>
+      </div>
+    );
+  }
+
+  if (view.name === 'page') {
+    const scan = state?.tab?.scan;
+    if (scan?.state === 'done' && scan.report.risk_level !== 'none') {
+      return (
+        <div className="pg-popup pg-popup-wide">
+          <RiskReport
+            variant="popup"
+            report={scan.report}
+            onClose={close}
+            secondary={{ label: 'Continue to site anyway', onClick: close }}
+            tertiary={{ label: 'Check another website', onClick: toChecker }}
+            primary={{ label: '← Leave this website', onClick: leave }}
+          />
+        </div>
+      );
+    }
+    if (scan?.state === 'done') return <CleanResult report={scan.report} onChecker={toChecker} />;
+    if (scan?.state === 'error') {
+      return (
+        <div className="pg-popup">
+          <Head />
+          <div className="pg-popup-body pg-center">
+            <div className="pg-hero">
+              <Character mood="suspicious" size={116} />
+            </div>
+            <h1>We couldn't finish this check</h1>
+            <p className="pg-sub">{scan.error}</p>
+            <button
+              className="pg-btn pg-btn-block"
+              onClick={async () => {
+                await bg({ type: 'CHECK_CURRENT_PAGE', tabId: tabId!, domain: domain!, force: true }).catch(() => {});
+                await refresh();
+              }}
+            >
+              Try again
+            </button>
+            <CheckerLink onClick={toChecker} />
+          </div>
+          <Foot hornets={hornets} />
+        </div>
+      );
+    }
+    return (
+      <div className="pg-popup">
+        <Head />
+        <div className="pg-popup-body pg-center">
+          <div className="pg-hero">
+            <Character mood="happy" size={116} />
+          </div>
+          <h1>Checking this website…</h1>
+          <p className="pg-sub">Protego is looking for scam warning signs. The first check of a site can take up to a minute.</p>
+          <div className="pg-domain-pill">
+            <span className="pg-spinner" style={{ color: 'var(--pg-pink)' }} /> {domain}
+          </div>
+          <CheckerLink onClick={toChecker} />
+        </div>
+        <Foot hornets={hornets} />
+      </div>
+    );
+  }
+
+  if (view.name === 'manual') {
+    const r = view.report;
+    if (r.risk_level === 'none') return <CleanResult report={r} onChecker={toChecker} />;
+    return (
+      <div className="pg-popup pg-popup-wide">
+        <RiskReport
+          variant="popup"
+          report={r}
+          onClose={close}
+          secondary={{ label: 'Check another website', onClick: toChecker }}
+          tertiary={toPage ? { label: "Back to this page's results", onClick: toPage } : undefined}
+          primary={{ label: 'Done', onClick: close }}
+        />
+      </div>
+    );
+  }
+
+  if (view.name === 'checker') {
+    return (
+      <Checker
+        initial={domain ?? ''}
+        hornets={hornets}
+        onResult={report => setView({ name: 'manual', report })}
+        onNotNow={toPage ?? close}
+        notNowLabel={toPage ? "Back to this page's results" : 'Not now'}
+      />
+    );
+  }
+
+  // listings
+  const blocked = state?.tab?.listings?.blocked ?? [];
+  return (
+    <div className="pg-popup">
+      <div className="pg-popup-head">
+        <Character mood={blocked.length > 0 ? 'suspicious' : 'happy'} size={28} />
+        <Logo />
+      </div>
+      <div className="pg-popup-body">
+        <div className="pg-domain-pill" style={{ justifyContent: 'flex-start' }}>
+          <GlobeIcon /> {domain ?? listingSite}
+        </div>
+        <div className="pg-big">
+          <span className="pg-big-num">{listingsOn ? blocked.length : '–'}</span>
+          <span className="pg-big-text">
+            <b>suspicious listings</b>
+            <span>{listingsOn ? 'blocked on this page' : 'filtering is off for this site'}</span>
+          </span>
+        </div>
+        <button
+          className="pg-btn pg-btn-block"
+          onClick={async () => {
+            if (!listingSite || tabId === undefined) return;
+            const enabled = !listingsOn;
+            setListingsOn(enabled);
+            await bg({ type: 'SET_LISTINGS_ENABLED', tabId, site: listingSite, enabled }).catch(() => setListingsOn(!enabled));
+            await refresh();
+          }}
+        >
+          {listingsOn ? 'Turn off for this site' : 'Turn on for this site'}
+        </button>
+      </div>
+      <BlockedList items={blocked} />
+      <div className="pg-popup-foot">
+        <button className="pg-link" onClick={toChecker}>
+          Check a website
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------- views ----------------
+
+function CleanResult({ report, onChecker }: { report: SiteReport; onChecker: () => void }) {
+  return (
+    <div className="pg-popup">
+      <Head />
+      <div className="pg-popup-body pg-center">
+        <div className="pg-hero">
+          <Character mood="happy" size={116} />
+        </div>
+        <h1>No security issues found</h1>
+        <p className="pg-sub">Nothing suspicious detected in this check.</p>
+        <div className="pg-domain-pill">
+          <GlobeIcon /> {report.domain}
+        </div>
+        <button className="pg-btn pg-btn-block" onClick={close}>
+          Thanks for checking
+        </button>
+        <p className="pg-meta" style={{ marginBottom: 0 }}>
+          {report.confidence} confidence · checked {timeAgo(report.checked_at_ms)}
+        </p>
+        <CheckerLink onClick={onChecker} />
+      </div>
+    </div>
+  );
+}
+
+function Checker(props: {
+  initial: string;
+  hornets: number;
+  onResult: (r: SiteReport) => void;
+  onNotNow: () => void;
+  notNowLabel: string;
+}) {
+  const [input, setInput] = useState(props.initial);
+  const [checking, setChecking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => inputRef.current?.select(), []);
+
+  async function run() {
     setError(null);
     setChecking(true);
     try {
-      const report = await bg<SiteReport>({ type: 'MANUAL_CHECK', input, force });
-      setView({ name: 'result', report });
+      props.onResult(await bg<SiteReport>({ type: 'MANUAL_CHECK', input }));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -57,185 +280,57 @@ export default function App() {
     }
   }
 
-  async function toggleListings() {
-    if (!listingSite || tabId === undefined) return;
-    const enabled = !listingsOn;
-    setListingsOn(enabled);
-    await bg({ type: 'SET_LISTINGS_ENABLED', tabId, site: listingSite, enabled }).catch(() => setListingsOn(!enabled));
-    if (!enabled) setState(s => (s?.tab?.listings ? { ...s, tab: { ...s.tab, listings: { ...s.tab.listings, blocked: [] } } } : s));
-  }
-
-  const hornets = state?.hornets ?? 0;
-  const close = () => window.close();
-
   return (
     <div className="pg-popup">
-      {view.name === 'loading' && (
-        <div className="pg-popup-body pg-center" style={{ padding: 40 }}>
-          <div className="pg-spinner" style={{ margin: '0 auto', color: 'var(--pg-pink)' }} />
+      <Head />
+      <div className="pg-popup-body pg-center">
+        <div className="pg-hero">
+          <Character mood="happy" size={116} />
         </div>
-      )}
-
-      {view.name === 'check' && (
-        <>
-          <Head onClose={close} />
-          <div className="pg-popup-body pg-center">
-            <div className="pg-hero">
-              <Character mood={autoMood(state)} size={116} />
+        <h1>Check before you pay</h1>
+        <p className="pg-sub">Look for signs of scams before you share payment or personal details.</p>
+        <form
+          className="pg-card"
+          onSubmit={e => {
+            e.preventDefault();
+            if (input.trim() && !checking) void run();
+          }}
+        >
+          <div className="pg-card-in">
+            <label className="pg-label" htmlFor="pg-url">
+              Website name or URL
+            </label>
+            <div className="pg-input">
+              <SearchIcon />
+              <input
+                id="pg-url"
+                ref={inputRef}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                placeholder="Enter website name or URL"
+                autoComplete="off"
+                spellCheck={false}
+              />
             </div>
-            <h1>Check before you pay</h1>
-            <p className="pg-sub">Look for signs of scams before you share payment or personal details.</p>
-            <form
-              className="pg-card"
-              onSubmit={e => {
-                e.preventDefault();
-                void runCheck();
-              }}
-            >
-              <div className="pg-card-in">
-                <label className="pg-label" htmlFor="pg-url">
-                  Website name or URL
-                </label>
-                <div className="pg-input">
-                  <SearchIcon />
-                  <input
-                    id="pg-url"
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    placeholder="Enter website name or URL"
-                    autoComplete="off"
-                    spellCheck={false}
-                  />
-                </div>
-              </div>
-              <div className="pg-status">
-                <span>Status</span>
-                <AutoStatus state={state} input={input} checking={checking} />
-              </div>
-            </form>
-            {error && <p className="pg-error">{error}</p>}
-            <button className="pg-btn pg-btn-block" disabled={checking || !input.trim()} onClick={() => void runCheck()}>
-              {checking ? <span className="pg-spinner" /> : <ScanIcon />}
-              {checking ? 'Checking… this can take a moment' : 'Check this website'}
-            </button>
-            <p style={{ margin: '12px 0 0' }}>
-              <button className="pg-link" onClick={close}>
-                Not now
-              </button>
-            </p>
           </div>
-          <Foot hornets={hornets} />
-        </>
-      )}
-
-      {view.name === 'result' && view.report.risk_level === 'none' && (
-        <>
-          <Head onClose={close} />
-          <div className="pg-popup-body pg-center">
-            <div className="pg-hero">
-              <Character mood="happy" size={116} />
-            </div>
-            <h1>No security issues found</h1>
-            <p className="pg-sub">Nothing suspicious detected in this check.</p>
-            <div className="pg-domain-pill">
-              <GlobeIcon /> {view.report.domain}
-            </div>
-            <button className="pg-btn pg-btn-block" onClick={() => setView({ name: 'check' })}>
-              Thanks for checking
-            </button>
-            <p className="pg-meta" style={{ marginBottom: 0 }}>
-              {view.report.confidence} confidence · checked {timeAgo(view.report.checked_at_ms)} ·{' '}
-              <button className="pg-link" onClick={() => void runCheck(true)}>
-                re-check
-              </button>
-            </p>
+          <div className="pg-status">
+            <span>Status</span>
+            <b>{checking ? 'Checking…' : <><ClockIcon /> Not checked yet</>}</b>
           </div>
-        </>
-      )}
-
-      {view.name === 'result' && view.report.risk_level !== 'none' && (
-        <>
-          <Head onClose={close} />
-          <div className="pg-popup-body pg-compact">
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 6 }}>
-              <Character mood={moodFor(view.report.risk_level)} size={56} />
-              <div>
-                <h1 style={{ margin: 0 }}>Risk level: {LEVEL_LABEL[view.report.risk_level]}</h1>
-                <span className="pg-meta" style={{ margin: 0 }}>
-                  {view.report.domain} · {view.report.confidence} confidence
-                </span>
-              </div>
-            </div>
-            <RiskBar score={view.report.score} />
-            <p className="pg-summary">{view.report.summary}</p>
-            <ul className="pg-reasons">
-              {view.report.reasons.map((r, i) => (
-                <li key={i}>
-                  <SeverityIcon severity={r.severity} />
-                  <span>
-                    <b>{r.title}.</b> {r.detail}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <button className="pg-btn pg-btn-block" onClick={() => setView({ name: 'check' })}>
-              Got it
-            </button>
-          </div>
-          <Foot hornets={hornets} />
-        </>
-      )}
-
-      {view.name === 'listings' && (
-        <>
-          <div className="pg-popup-head">
-            <Character mood={(state?.tab?.listings?.blocked.length ?? 0) > 0 ? 'suspicious' : 'happy'} size={28} />
-            <Logo />
-          </div>
-          <div className="pg-popup-body">
-            <div className="pg-domain-pill" style={{ justifyContent: 'flex-start' }}>
-              <GlobeIcon /> {state?.domain ?? listingSite}
-            </div>
-            <div className="pg-big">
-              <span className="pg-big-num">{listingsOn ? (state?.tab?.listings?.blocked.length ?? 0) : '–'}</span>
-              <span className="pg-big-text">
-                <b>suspicious listings</b>
-                <span>{listingsOn ? 'blocked on this page' : 'filtering is off for this site'}</span>
-              </span>
-            </div>
-            <button className="pg-btn pg-btn-block" onClick={() => void toggleListings()}>
-              {listingsOn ? 'Turn off for this site' : 'Turn on for this site'}
-            </button>
-          </div>
-          <BlockedList items={state?.tab?.listings?.blocked ?? []} />
-          <div className="pg-popup-foot">
-            <button className="pg-link" onClick={() => setView({ name: 'check' })}>
-              Check this website instead
-            </button>
-          </div>
-        </>
-      )}
+        </form>
+        {error && <p className="pg-error">{error}</p>}
+        <button className="pg-btn pg-btn-block" disabled={checking || !input.trim()} onClick={() => void run()}>
+          {checking ? <span className="pg-spinner" /> : <ScanIcon />}
+          {checking ? 'Checking… this can take a moment' : 'Check this website'}
+        </button>
+        <p style={{ margin: '12px 0 0' }}>
+          <button className="pg-link" onClick={props.onNotNow}>
+            {props.notNowLabel}
+          </button>
+        </p>
+      </div>
+      <Foot hornets={props.hornets} />
     </div>
-  );
-}
-
-function autoMood(state: PopupState | null) {
-  return state?.tab?.scan.state === 'done' ? moodFor(state.tab.scan.report.risk_level) : 'happy';
-}
-
-function AutoStatus({ state, input, checking }: { state: PopupState | null; input: string; checking: boolean }) {
-  if (checking) return <b>Checking…</b>;
-  const scan = state?.tab?.scan;
-  const sameSite = state?.domain && input.trim().toLowerCase().replace(/^www\./, '') === state.domain;
-  if (sameSite && scan?.state === 'checking') return <b>Checking automatically…</b>;
-  if (sameSite && scan?.state === 'done') {
-    const lvl = scan.report.risk_level;
-    return <b>{lvl === 'none' ? 'No issues found' : `${LEVEL_LABEL[lvl]} risk`}</b>;
-  }
-  return (
-    <b>
-      <ClockIcon /> Not checked yet
-    </b>
   );
 }
 
@@ -261,11 +356,21 @@ function BlockedList({ items }: { items: { title: string; reason: string }[] }) 
   );
 }
 
-function Head({ onClose }: { onClose: () => void }) {
+function CheckerLink({ onClick }: { onClick: () => void }) {
+  return (
+    <p style={{ margin: '12px 0 0' }}>
+      <button className="pg-link" onClick={onClick}>
+        Check another website
+      </button>
+    </p>
+  );
+}
+
+function Head() {
   return (
     <div className="pg-popup-head">
       <Logo />
-      <button className="pg-x" onClick={onClose} aria-label="Close">
+      <button className="pg-x" onClick={close} aria-label="Close">
         ×
       </button>
     </div>

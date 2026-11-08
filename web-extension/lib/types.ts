@@ -41,14 +41,15 @@ export type TabState = {
 /** Messages sent to the background service worker. */
 export type BgMessage =
   | { type: 'PAGE_SIGNALS'; domain: string; signals: unknown }
+  | { type: 'GET_CACHED_REPORT'; domain: string }
+  | { type: 'CHECK_CURRENT_PAGE'; tabId: number; domain: string; force?: boolean }
   | { type: 'MANUAL_CHECK'; input: string; force?: boolean }
-  | { type: 'GET_POPUP_STATE' ; tabId?: number; domain?: string }
+  | { type: 'GET_POPUP_STATE'; tabId?: number; domain?: string }
   | { type: 'CHECK_LISTINGS'; site: string; items: ListingItem[] }
   | { type: 'LISTINGS_BLOCKED'; site: string; blocked: { key: string; title: string; reason: string }[] }
   | { type: 'GET_LISTINGS_ENABLED'; site: string }
   | { type: 'SET_LISTINGS_ENABLED'; tabId: number; site: string; enabled: boolean }
-  | { type: 'LEAVE_SITE' }
-  | { type: 'CONTINUE_ANYWAY'; domain: string };
+  | { type: 'LEAVE_SITE'; tabId?: number };
 
 /** Messages sent from the background to content scripts. */
 export type TabMessage =

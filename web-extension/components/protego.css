@@ -183,6 +183,16 @@
   border-top: 1px solid var(--pg-line);
   margin-top: 12px;
 }
+.pg-foot-links { display: inline-flex; flex-wrap: wrap; gap: 6px 16px; }
+/* The same report inside the toolbar popup: no floating card chrome. */
+.pg-modal-embedded {
+  width: 100%;
+  max-height: none;
+  border-radius: 0;
+  border-top: 0;
+  box-shadow: none;
+  animation: none;
+}
 @media (max-width: 560px) {
   .pg-modal-body { grid-template-columns: 1fr; }
   .pg-modal-side { order: -1; }
@@ -205,6 +215,7 @@
   border-top: 4px solid var(--pg-pink);
   font: 400 14px/1.45 var(--pg-font);
 }
+.pg-popup-wide { width: 640px; }
 .pg-popup-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px 6px; }
 .pg-popup-head .pg-x { margin-left: auto; }
 .pg-popup-body { padding: 4px 18px 16px; }

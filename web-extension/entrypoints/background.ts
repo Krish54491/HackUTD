@@ -58,34 +58,47 @@ async function setBadge(tabId: number, kind: keyof typeof BADGE | null, listingC
 
 // ---------- handlers ----------
 
-/** Automatic check when a page finishes loading. */
-async function onPageSignals(tabId: number, domain: string, signals: unknown) {
-  const isCheckout = !!(signals as { is_checkout?: boolean })?.is_checkout;
-  await setTab(tabId, { domain, scan: { state: 'checking' } });
-  let report = await cachedReport(domain);
-  if (!report) await setBadge(tabId, 'checking');
-  try {
-    report ??= await api.scan(domain, signals);
-    await saveReport(report);
-  } catch (e) {
-    await setTab(tabId, { domain, scan: { state: 'error', error: (e as Error).message } });
-    await setBadge(tabId, null);
-    return;
-  }
-  await setTab(tabId, { domain, scan: { state: 'done', report } });
-  await setBadge(tabId, report.risk_level);
+/** Scans in flight per tab, so the page and the popup never start the same check twice. */
+const inFlight = new Map<string, Promise<SiteReport | null>>(); // key: `${tabId}:${domain}`
 
-  const continued = (await session.get(`continued:${domain}`))[`continued:${domain}`];
-  const warn = report.risk_level === 'high' || report.risk_level === 'medium' || (report.risk_level === 'low' && isCheckout);
-  if (!warn || continued) return;
+/**
+ * Check the site open in a tab (cache first), record the result for the popup,
+ * and put the blocking report modal over the page for ANY risk level.
+ * `signals` are the in-page signals, or null when the popup triggered the check.
+ */
+function checkTab(tabId: number, domain: string, signals: unknown | null, force = false): Promise<SiteReport | null> {
+  const key = `${tabId}:${domain}`;
+  const running = inFlight.get(key);
+  if (running && !force) return running;
+  const p = (async () => {
+    await setTab(tabId, { domain, scan: { state: 'checking' } });
+    let report = force ? null : await cachedReport(domain);
+    if (!report) await setBadge(tabId, 'checking');
+    try {
+      report ??= await api.scan(domain, signals, { manual: !signals, force });
+      await saveReport(report);
+    } catch (e) {
+      await setTab(tabId, { domain, scan: { state: 'error', error: (e as Error).message } });
+      await setBadge(tabId, null);
+      return null;
+    }
+    await setTab(tabId, { domain, scan: { state: 'done', report } });
+    await setBadge(tabId, report.risk_level);
+    if (report.risk_level !== 'none') await warnTab(tabId, report);
+    return report;
+  })().finally(() => inFlight.delete(key));
+  inFlight.set(key, p);
+  return p;
+}
 
+async function warnTab(tabId: number, report: SiteReport) {
   const msg: TabMessage = { type: 'SHOW_REPORT', report };
   await browser.tabs.sendMessage(tabId, msg).catch(() => {});
 
   // One hornet per risky site per day.
-  const key = `warned:${domain}`;
+  const key = `warned:${report.domain}`;
   const last = (await local.get(key))[key] as number | undefined;
-  if (report.risk_level !== 'low' && (!last || Date.now() - last > 86_400_000)) {
+  if (!last || Date.now() - last > 86_400_000) {
     await local.set({ [key]: Date.now() });
     api.recordHornets('site', 1).catch(() => {});
   }
@@ -119,8 +132,19 @@ async function popupState(tabId: number | undefined, domain: string | null): Pro
 async function handle(msg: BgMessage, tabId: number | undefined): Promise<unknown> {
   switch (msg.type) {
     case 'PAGE_SIGNALS':
-      if (tabId !== undefined) void onPageSignals(tabId, msg.domain, msg.signals);
+      if (tabId !== undefined) void checkTab(tabId, msg.domain, msg.signals);
       return { ok: true };
+
+    case 'GET_CACHED_REPORT':
+      // Local only (no network), so the page can raise the modal before it finishes loading.
+      return cachedReport(msg.domain);
+
+    case 'CHECK_CURRENT_PAGE': {
+      const cur = await getTab(msg.tabId);
+      const fresh = cur?.domain === msg.domain && (cur.scan.state === 'checking' || cur.scan.state === 'done');
+      if (!fresh || msg.force) void checkTab(msg.tabId, msg.domain, null, msg.force);
+      return { ok: true };
+    }
 
     case 'MANUAL_CHECK': {
       const domain = normalizeDomain(msg.input);
@@ -161,18 +185,16 @@ async function handle(msg: BgMessage, tabId: number | undefined): Promise<unknow
       return { ok: true };
     }
 
-    case 'CONTINUE_ANYWAY':
-      await session.set({ [`continued:${msg.domain}`]: true });
-      return { ok: true };
-
-    case 'LEAVE_SITE':
-      if (tabId === undefined) return { ok: false };
+    case 'LEAVE_SITE': {
+      const target = msg.tabId ?? tabId; // popup passes tabId; the page modal is the sender tab
+      if (target === undefined) return { ok: false };
       try {
-        await browser.tabs.goBack(tabId);
+        await browser.tabs.goBack(target);
       } catch {
-        await browser.tabs.update(tabId, { url: 'chrome://newtab/' }).catch(() => browser.tabs.remove(tabId));
+        await browser.tabs.update(target, { url: 'chrome://newtab/' }).catch(() => browser.tabs.remove(target));
       }
       return { ok: true };
+    }
   }
 }
 
@@ -185,6 +207,7 @@ export default defineBackground(() => {
   });
 
   browser.tabs.onRemoved.addListener(tabId => {
+    for (const k of inFlight.keys()) if (k.startsWith(`${tabId}:`)) inFlight.delete(k);
     void session.remove(`tab:${tabId}`);
   });
 

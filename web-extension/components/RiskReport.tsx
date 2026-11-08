@@ -1,22 +1,42 @@
+import { useEffect, useRef } from 'react';
 import type { SiteReport } from '@/lib/types';
 import { Character, LEVEL_LABEL, Logo, RiskBar, SeverityIcon, moodFor } from './ui';
+
+type Action = { label: string; onClick: () => void };
 
 type Props = {
   report: SiteReport;
   onClose: () => void;
-  onContinue: () => void;
-  onLeave: () => void;
+  /** Pink button, bottom right (mockup: "Leave this website"). */
+  primary: Action;
+  /** Underlined link, bottom left (mockup: "Continue to site anyway"). */
+  secondary: Action;
+  /** Optional extra link next to the secondary one (popup: "Check another website"). */
+  tertiary?: Action;
+  /** 'page' = blocking modal over the website; 'popup' = same report inside the toolbar popup. */
+  variant?: 'page' | 'popup';
 };
 
 /**
- * "Website security report" modal shown over a risky page (mockup image-1).
+ * "Website security report" (mockup image-1).
  * The [data-protego-hornet-slot] element is the hook for the future
  * "Protego swoops in and kills the hornet" entrance animation.
  */
-export function RiskReport({ report, onClose, onContinue, onLeave }: Props) {
+export function RiskReport({ report, onClose, primary, secondary, tertiary, variant = 'page' }: Props) {
   const level = report.risk_level;
+  const primaryRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (variant === 'page') primaryRef.current?.focus();
+  }, [variant]);
+
   return (
-    <div className="pg-modal" role="dialog" aria-modal="true" aria-labelledby="pg-title">
+    <div
+      className={`pg-modal${variant === 'popup' ? ' pg-modal-embedded' : ''}`}
+      role={variant === 'page' ? 'alertdialog' : undefined}
+      aria-modal={variant === 'page' ? true : undefined}
+      aria-labelledby="pg-title"
+      aria-describedby="pg-summary"
+    >
       <header className="pg-modal-head">
         <Logo />
         <span className="pg-modal-kicker">Website security report</span>
@@ -34,7 +54,9 @@ export function RiskReport({ report, onClose, onContinue, onLeave }: Props) {
           <RiskBar score={report.score} />
 
           <h2>Why this site was flagged</h2>
-          <p className="pg-summary">{report.summary}</p>
+          <p className="pg-summary" id="pg-summary">
+            {report.summary}
+          </p>
           <ul className="pg-reasons">
             {report.reasons.map((r, i) => (
               <li key={i}>
@@ -60,11 +82,18 @@ export function RiskReport({ report, onClose, onContinue, onLeave }: Props) {
       </div>
 
       <footer className="pg-modal-foot">
-        <button className="pg-link" onClick={onContinue}>
-          Continue to site anyway
-        </button>
-        <button className="pg-btn" onClick={onLeave}>
-          ← Leave this website
+        <span className="pg-foot-links">
+          <button className="pg-link" onClick={secondary.onClick}>
+            {secondary.label}
+          </button>
+          {tertiary && (
+            <button className="pg-link" onClick={tertiary.onClick}>
+              {tertiary.label}
+            </button>
+          )}
+        </span>
+        <button className="pg-btn" ref={primaryRef} onClick={primary.onClick}>
+          {primary.label}
         </button>
       </footer>
     </div>

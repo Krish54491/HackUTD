@@ -1,32 +1,5 @@
 # Protego - Web Extension
 
-## Track information
-
-T-Mobile: Protect customers from scams and fraud in ways we haven’t thought of yet.
-
-You build:
-
-- Any approach: prevention, real-time protection, education, new security features
-- Scam detection is core piece, not the whole product
-- Go beyond classification: safeguards and customer-facing experiences
-- Clear next steps, honest confidence, privacy by design
-- Synthetic data: scam message and scenarios. No real customer data.
-
-We provide:
-
-- Synthetic message set
-- Scam taxonomy
-- Baseline classifier
-
-Judges look for:
-
-- Creativity
-- Impact
-- Usability
-- Security and privacy
-- Detection accuracy
-  Spacetime:Build any app or game you want. To qualify, submit a public GitHub repo, and the majority of your backend must be built on Spacetime.
-
 ## Important
 
 - Backend functions must be usable for a mobile app and website
@@ -62,6 +35,11 @@ This feature will remove listings that are suspicous on Job Boards/Scholarship/A
 When on site with fake listings replaces normal on extension icon click popup with this:
 ![Listings blocked popup](image-2.png)
 
+## Frontend / Non-Functional extras
+
+- Replace the grayed out images with the corresponding icons
+- When seeing a site, Protego will enter the screen, pull open the site, find the hornet, and KILL IT. It will then give a reason for the site being broken(popup in middle of browser with report information).
+
 ## Implementation (current)
 
 Built with WXT, React, and TypeScript (Manifest V3). The backend is in `../backend` (SpacetimeDB module plus agent worker); see `backend/README.md`.
@@ -74,13 +52,13 @@ npm run dev            # opens Chrome with the extension loaded and hot reload
 npm run build          # production build in .output/chrome-mv3 (load unpacked)
 ```
 
-| Piece | File |
-|---|---|
-| Background: identity, scan orchestration, badge, hornet counter | `entrypoints/background.ts` |
-| Page signals (the privacy boundary: no form values, cookies, query strings, or page text) | `lib/signals.ts` |
-| Auto-scan and the security report modal over the page | `entrypoints/scanner.content/`, `components/RiskReport.tsx` |
-| Fake listings (LinkedIn Jobs, Zillow, Apartments.com) | `entrypoints/listings.content/`, selectors in `lib/listing-sites.ts` |
-| Popup: check view, clean result, risk result, listings view | `entrypoints/popup/App.tsx` |
+| Piece                                                                                     | File                                                                 |
+| ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Background: identity, scan orchestration, badge, hornet counter                           | `entrypoints/background.ts`                                          |
+| Page signals (the privacy boundary: no form values, cookies, query strings, or page text) | `lib/signals.ts`                                                     |
+| Auto-scan and the security report modal over the page                                     | `entrypoints/scanner.content/`, `components/RiskReport.tsx`          |
+| Fake listings (LinkedIn Jobs, Zillow, Apartments.com)                                     | `entrypoints/listings.content/`, selectors in `lib/listing-sites.ts` |
+| Popup: check view, clean result, risk result, listings view                               | `entrypoints/popup/App.tsx`                                          |
 
 Behavior decisions:
 
