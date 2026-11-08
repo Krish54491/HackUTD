@@ -335,8 +335,60 @@
 .tg-say a { color: var(--pg-pink); font-weight: 600; }
 .tg-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; }
 .tg-actions-links { display: inline-flex; gap: 14px; }
+.tg-actions-btns { display: inline-flex; gap: 8px; }
+.tg-bubble .tg-btn-dash { background: var(--pg-ink); }
+.tg-bubble .tg-btn-dash:hover { background: #33333d; }
 .tg-link-danger { color: #b42318; }
-.tg-pill-tmo { background: var(--pg-pink); color: #fff; }
+.tg-pill-tmo { display: inline-flex; align-items: center; gap: 6px; background: var(--pg-pink); color: #fff; }
+.tg-pill-tmo .tg-tmo-word { height: 11px; width: 54px; }
+.tg-tmo-word, .tg-tmo-mark { display: block; }
+
+/* After the kill: Tango flashes a T-Mobile cape and brags until Next; the pin stays on. */
+.tg-cape {
+  position: absolute;
+  z-index: 0;
+  left: 10px;
+  top: 52px;
+  width: 130px;
+  height: 140px;
+  display: grid;
+  place-items: center;
+  padding-top: 34px;
+  box-sizing: border-box;
+  color: #fff;
+  background: linear-gradient(160deg, #ff3fa4, #e20074 45%, #a30054);
+  clip-path: polygon(22% 0, 78% 0, 100% 88%, 84% 100%, 66% 90%, 50% 100%, 34% 90%, 16% 100%, 0 88%);
+  filter: drop-shadow(0 0 18px rgba(226, 0, 116, 0.7));
+  transform-origin: 50% 0;
+  animation: tg-cape-in 0.45s cubic-bezier(0.3, 1.5, 0.5, 1) both, tg-cape-flap 0.5s 0.45s ease-in-out infinite alternate;
+}
+.tg-cape .tg-tmo-mark { width: 34px; height: 40px; }
+.tg-tmo-pin {
+  position: absolute;
+  z-index: 3;
+  right: 4px;
+  bottom: 10px;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  box-sizing: border-box;
+  border-radius: 9px;
+  color: #fff;
+  background: #e20074;
+  box-shadow: 0 0 0 3px #fff, 0 4px 14px rgba(226, 0, 116, 0.5);
+  animation: tg-limb-pop 0.38s cubic-bezier(0.3, 1.7, 0.5, 1) both;
+}
+.tg-tmo-pin .tg-tmo-mark { width: 21px; height: 25px; }
+.tg-cheer .tg-body { animation: tg-cheer-hop 0.6s ease-in-out 2; }
+.tg-brag { border: 3px solid #e20074; }
+.tg-brag::after { background: #e20074; }
+.tg-brag > .tg-tmo-word { height: 24px; width: 117px; color: #e20074; }
+.tg-brag p { margin: 14px 0 0; font: 500 16px/1.45 var(--pg-font); color: var(--pg-ink); }
+.tg-brag strong { display: block; margin-bottom: 6px; font: 800 20px/1.25 var(--pg-font); color: #e20074; }
+@keyframes tg-cape-in { from { transform: scaleY(0) rotate(-8deg); opacity: 0; } }
+@keyframes tg-cape-flap { from { transform: skewX(-4deg); } to { transform: skewX(5deg) scaleX(1.04); } }
+@keyframes tg-cheer-hop { 50% { transform: translateY(-14px) rotate(-4deg); } }
 .tg-report { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; }
 
 @keyframes tg-roll-in { from { transform: translateX(calc(-50vw - 260px)); } }

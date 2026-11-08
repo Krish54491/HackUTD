@@ -1,80 +1,258 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { LayoutDashboard, Phone, Trophy, CalendarDays, ScanLine, ChevronDown, Search, Download, Shield, ShieldCheck, PhoneOff, ExternalLink, ArrowUpRight, ArrowRight, ArrowDown, Link, Fingerprint, Users, CreditCard, LockKeyhole, Check, X, Menu, TrendingUp } from 'lucide-react';
-import { concepts, csvLog, filterScams, members, type Period, type Scam } from './data';
+import { ScanLine, X, Crown, Trophy, Flame, Swords, ArrowUpRight, Award, Lock, Sun, Moon, Fish, Users, Skull, Gem, type LucideIcon } from 'lucide-react';
+import { members } from './data';
 import { scanWebsite, type SiteReport } from './scan';
+import { Hornet } from './Hornet';
+import { Trophies } from './Trophies';
+import { TMobileLogo } from './TMobileLogo';
+import { NewCatch, catchFromUrl } from './NewCatch';
+import { TIERS, badges as baseBadges, slain as seeded, tier, tierOf, tips, weekly, type Badge, type Slain, type TierId } from './hive';
 
-type Page = 'Overview' | 'T-Mobile services' | 'Leaderboard';
-const official = 'https://www.t-mobile.com/benefits/scam-shield';
-const periodLabels = { week: 'Nov 1–7, 2026', month: 'Oct 9–Nov 7, 2026', all: 'All time' };
-const icons = { link: Link, fingerprint: Fingerprint, users: Users, card: CreditCard };
-function PeriodSelect({value, onChange}: { value: Period; onChange: (v: Period) => void }) { return <label className="control"><CalendarDays size={15}/><select aria-label="Date range" value={value} onChange={e=>onChange(e.target.value as Period)}>{Object.entries(periodLabels).map(([v,label])=><option key={v} value={v}>{label}</option>)}</select></label>; }
-function CharacterAvatar({ hero = false }: { hero?: boolean }) {
-  return <span className={hero ? 'character-avatar hero-character' : 'character-avatar'}><img src={`${import.meta.env.BASE_URL}characters/light-mode.png`} alt="" draggable={false}/></span>;
+const BADGE_ICON: Record<string, LucideIcon> = { first: Crown, century: Swords, giant: Skull, streak: Flame, phish: Fish, hive: Users, shelf: Trophy, million: Gem };
+const badgeIcon = (b: Badge) => BADGE_ICON[b.id.startsWith('first-') ? 'first' : b.id] ?? Award;
+
+type Route = 'home' | 'week';
+const ME = 'QuietOrbit';
+const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' });
+const fmtTime = (d: string) => new Date(d).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' });
+const WEEK_START = '2026-11-02';
+const routeFromHash = (): Route => (location.hash === '#week' ? 'week' : 'home');
+const incoming = catchFromUrl();
+const startHive = incoming ? seeded.filter(s => s.domain !== incoming.domain) : seeded;
+
+function CharacterAvatar() {
+  return <span className="character-avatar"><img src={`${import.meta.env.BASE_URL}characters/light-mode.png`} alt="" draggable={false} /></span>;
 }
-function Modal({title, children, close}: {title: string; children: ReactNode; close: ()=>void}) {
+
+function Modal({ title, children, close, className = '' }: { title: string; children: ReactNode; close: () => void; className?: string }) {
   const titleId = useId();
   const ref = useRef<HTMLDialogElement>(null);
-  useEffect(()=>{ ref.current?.showModal(); },[]);
-  return <dialog ref={ref} aria-labelledby={titleId} className="modal" onCancel={close} onClick={e=>{if(e.target===e.currentTarget)close();}}><div className="modal-title"><h2 id={titleId}>{title}</h2><button aria-label="Close dialog" onClick={close}><X size={20}/></button></div>{children}</dialog>;
+  useEffect(() => { ref.current?.showModal(); }, []);
+  return <dialog ref={ref} aria-labelledby={titleId} className={`modal ${className}`} onCancel={close} onClick={e => { if (e.target === e.currentTarget) close(); }}><div className="modal-title"><h2 id={titleId}>{title}</h2><button aria-label="Close" onClick={close}><X size={20} /></button></div>{children}</dialog>;
 }
+
 export default function App() {
-  const [page,setPage]=useState<Page>('Overview');
-  const [signedIn,setSignedIn]=useState(false);
-  const [account,setAccount]=useState(false);
-  const [mobile,setMobile]=useState(false);
-  const [period,setPeriod]=useState<Period>('week');
-  const [query,setQuery]=useState('');
-  const [category,setCategory]=useState('All threat categories');
-  const [logPeriod,setLogPeriod]=useState<Period>('all');
-  const [logPage,setLogPage]=useState(1);
-  const [selected,setSelected]=useState<Scam|null>(null);
-  const [leaderQuery,setLeaderQuery]=useState('');
-  const [leaderPeriod,setLeaderPeriod]=useState<Period>('week');
-  const [alias,setAlias]=useState('QuietOrbit');
-  const [optedIn,setOptedIn]=useState(true);
-  const [privacy,setPrivacy]=useState(false);
-  const [draftAlias,setDraftAlias]=useState(alias);
-  const [draftOptedIn,setDraftOptedIn]=useState(optedIn);
-  const openPrivacy=()=>{setDraftAlias(alias);setDraftOptedIn(optedIn);setPrivacy(true);};
-  const [checker,setChecker]=useState(false);
-  const [url,setUrl]=useState('');
-  const [checking,setChecking]=useState(false);
-  const [error,setError]=useState('');
-  const [report,setReport]=useState<SiteReport|null>(null);
-  const abort=useRef<AbortController|null>(null);
-  const navigate=(p:Page)=>{setPage(p);setMobile(false);setAccount(false);};
-  const personalizedReason = signedIn ? 'Recommended after the impersonation and phishing attempts in your protection history.' : '';
-  const records=signedIn ? filterScams(query,category,logPeriod) : [];
-  const pages=Math.max(1,Math.ceil(records.length/6));
-  const currentPage=Math.min(logPage,pages);
-  const visible=records.slice((currentPage-1)*6,currentPage*6);
-  const periodRecords=signedIn ? filterScams('','All threat categories',period) : [];
-  const score=periodRecords.length;
-  const ranked=members.filter(m=>m.alias!=='QuietOrbit'||(signedIn&&optedIn)).map(m=>({...m, alias:m.alias==='QuietOrbit'?alias:m.alias, self:m.alias==='QuietOrbit', scores:leaderPeriod==='all'?Math.round(m.scores*128/42):leaderPeriod==='month'?Math.round(m.scores*108/42):m.scores}));
-  const rank=ranked.findIndex(m=>m.self)+1;
-  function exportLog(){const a=document.createElement('a');const link=URL.createObjectURL(new Blob([csvLog(records)],{type:'text/csv;charset=utf-8;'}));a.href=link;a.download='tango-scam-log.csv';a.click();URL.revokeObjectURL(link);}
-  function closeChecker(){abort.current?.abort();setChecker(false);setChecking(false);}
-  async function submitScan(e:React.FormEvent){e.preventDefault();abort.current?.abort();const controller=new AbortController();abort.current=controller;setChecking(true);setError('');setReport(null);try{const result=await scanWebsite(url,controller.signal);if(!controller.signal.aborted)setReport(result);}catch(e){if(!controller.signal.aborted)setError(e instanceof Error?e.message:'Unable to connect to Tango.');}finally{if(!controller.signal.aborted)setChecking(false);}}
-  useEffect(()=>()=>abort.current?.abort(),[]);
-  const leaderboardRows=(compact=false)=><table className="leader-table"><thead><tr><th>Rank</th><th>Opt-in alias</th><th>Hornets defeated</th></tr></thead><tbody>{ranked.filter(m=>m.alias.toLowerCase().includes(leaderQuery.toLowerCase())).filter((_,i)=>!compact||i<3||[6,7,8].includes(i)).map(m=><tr key={m.alias} className={m.self?'you':''}><td>{String(ranked.indexOf(m)+1).padStart(2,'0')}</td><td>{!compact&&<span className="avatar small">{m.alias.match(/[A-Z]/g)?.join('').slice(0,2)||m.alias.slice(0,2).toUpperCase()}</span>}{m.alias}{m.self&&<strong> · You</strong>}</td><td>{m.scores}</td></tr>)}</tbody></table>;
-  return <div className="app-shell">
-    <header className="topbar"><button className="mobile-menu" aria-label="Toggle navigation" onClick={()=>setMobile(!mobile)}><Menu size={20}/></button><button className="brand" onClick={()=>navigate('Overview')}><CharacterAvatar/>tango.</button><span className="personal">Personal protection</span><div className="header-actions"><button className="pink-button" onClick={()=>{setChecker(true);setError('');setReport(null);}}><ScanLine size={16}/>Check a website</button><span className="separator"/>{signedIn?<div className="account"><button className="account-button" onClick={()=>setAccount(!account)} aria-expanded={account}><span className="avatar">{alias.slice(0,1).toUpperCase()}{alias.match(/[A-Z]/g)?.[1]||'O'}</span><span>{alias}</span><ChevronDown size={14}/></button>{account&&<div className="account-menu"><button onClick={()=>{openPrivacy();setAccount(false);}}>Alias & privacy</button><button onClick={()=>{setSignedIn(false);setAccount(false);}}>Sign out</button></div>}</div>:<button className="pink-button" onClick={()=>setSignedIn(true)}>Sign in</button>}</div></header>
-    <aside className={mobile?'sidebar open':'sidebar'}><nav>{([{name:'Overview',icon:LayoutDashboard},{name:'T-Mobile services',icon:Phone},{name:'Leaderboard',icon:Trophy}] as const).map(({name,icon:Icon})=><button key={name} aria-current={page===name?'page':undefined} className={page===name?'nav-item active':'nav-item'} onClick={()=>navigate(name)}><Icon size={18}/>{name}</button>)}<div className="static-nav"><span>Protection settings</span><span>Help & resources</span></div></nav></aside>
-    <main>
-      {!signedIn&&<div className="signin-note"><ShieldCheck size={17}/><span>Sign in to see your protection history and community position.</span><button onClick={()=>setSignedIn(true)}>Try the demo <ArrowRight size={14}/></button></div>}
-      {page==='Overview'&&<>
-        <div className="page-toolbar"><PeriodSelect value={period} onChange={setPeriod}/></div>
-        <div className="summary-grid"><section className="hero-card"><div className="eyebrow-row"><span className="eyebrow">YOUR HORNETS DEFEATED</span><span>{period==='all'?'ALL TIME':period==='week'?'NOVEMBER TO DATE':'PAST 30 DAYS'}</span></div><div className="hero-number"><span>{score}</span><div><h1>Scams blocked. Hornets defeated.</h1><p><TrendingUp size={16}/>{signedIn?(period==='week'?'40% more than Oct 1–7 · 30 blocked':'Your protection activity for this period'):'Your protection story starts here'}</p></div><CharacterAvatar hero/></div><div className="hero-bottom"><span>{signedIn?128:0} scams prevented across your full history</span><a href="#scam-log">View log <ArrowDown size={14}/></a></div></section>
-        <section className="card breakdown"><div className="section-heading"><h2>What you stayed ahead of</h2><span>{score} total</span></div>{['Phishing','Fake scholarships','Shopping scams','Impersonation'].map(name=>{const count=periodRecords.filter(s=>s.category===name).length;return <div className="category" key={name}><div><span>{name}</span><strong>{count}</strong></div><div className="track"><span style={{width:`${score?count/score*100:0}%`}}/></div></div>;})}</section></div>
-        <section className="card log" id="scam-log"><div className="log-header"><div><h2>All scams prevented <span>{signedIn?128:0} records</span></h2><p>Your full Tango protection history. Each prevented scam counts as one hornet defeated.</p></div><button className="control" onClick={exportLog} disabled={!records.length}><Download size={15}/>Export log</button></div><div className="log-filters"><label className="search control"><Search size={17}/><input aria-label="Search scam history" placeholder="Search attempted scam or website" value={query} onChange={e=>{setQuery(e.target.value);setLogPage(1);}}/></label><label className="control"><select aria-label="Threat category" value={category} onChange={e=>{setCategory(e.target.value);setLogPage(1);}}>{['All threat categories','Phishing','Fake scholarships','Shopping scams','Impersonation'].map(c=><option key={c}>{c}</option>)}</select></label><label className="control"><CalendarDays size={15}/><select aria-label="Log date range" value={logPeriod} onChange={e=>{setLogPeriod(e.target.value as Period);setLogPage(1);}}><option value="all">All dates</option><option value="week">Past week</option><option value="month">Past 30 days</option></select></label></div><div className="table-scroll"><table className="log-table"><thead><tr><th>Time</th><th>Attempted scam / site</th><th>Category</th><th>Action taken</th><th>Outcome</th></tr></thead><tbody>{visible.map(s=><tr key={s.id}><td>{new Date(s.date).toLocaleDateString('en-US',{timeZone:'America/Chicago',month:'short',day:'numeric',year:'numeric'})}<small>{new Date(s.date).toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric',minute:'2-digit'})}</small></td><td><button className="log-entry" onClick={()=>setSelected(s)}>{s.title}</button><small>{s.domain}</small></td><td>{s.category}</td><td>{s.action}</td><td><span className="prevented"><ShieldCheck size={14}/>Prevented</span></td></tr>)}</tbody></table></div>{!visible.length&&<div className="empty"><Shield size={27}/><h3>{signedIn?'No matching records':'Your protection history lives here'}</h3><p>{signedIn?'Try another search or filter.':'Sign in to explore the demo dashboard.'}</p></div>}<div className="pagination"><span>{records.length?`Showing ${(currentPage-1)*6+1}–${Math.min(currentPage*6,records.length)} of ${records.length} records`:'0 records'} · {logPeriod==='all'?'All time':logPeriod==='week'?'Past week':'Past 30 days'}</span><div><button disabled={currentPage===1} onClick={()=>setLogPage(currentPage-1)}>← Previous</button>{Array.from(new Set([1,currentPage-1,currentPage,currentPage+1,pages])).filter(n=>n>0&&n<=pages).sort((a,b)=>a-b).map((n,i,arr)=><span key={n}>{i>0&&n-arr[i-1]>1&&<span className="ellipsis">…</span>}<button className={n===currentPage?'selected-page':''} onClick={()=>setLogPage(n)}>{n}</button></span>)}<button disabled={currentPage===pages} onClick={()=>setLogPage(currentPage+1)}>Next →</button></div></div></section>
-        <div className="bottom-grid"><section className="card services-preview"><div className="padded"><span className="eyebrow muted">ANOTHER LAYER OF PROTECTION</span><h2>Put T-Mobile in your corner.</h2><p>{signedIn?'Explore carrier call protection alongside your Tango browser tools.':'Explore services for an extra layer of scam protection.'}</p>{[{title:'Scam Shield',icon:Shield,text:'Explore T-Mobile’s scam-protection offering and available setup options.',link:'Set up in T-Life'},{title:'Scam ID',icon:Phone,text:'Learn about identifying suspected scam calls before answering.',link:'Learn about Scam ID'},{title:'Scam Block',icon:PhoneOff,text:'Explore options for blocking suspected scam calls.',link:'Learn about Scam Block'}].map(({title,icon:Icon,text,link})=><div className="service-row" key={title}><span className="icon-tile"><Icon size={19}/></span><div><h3>{title}</h3><p>{text}</p>{personalizedReason&&<p className="recommendation">{personalizedReason}</p>}<a href={official} target="_blank" rel="noreferrer">{link} <ArrowUpRight size={12}/></a></div></div>)}</div><div className="service-footnote">Call protection is separate from Tango. Review service availability and details with T-Mobile.<a href={official} target="_blank" rel="noreferrer">Official guide: t-mobile.com/benefits/scam-shield <ArrowUpRight size={11}/></a></div></section><section className="card leaderboard-preview"><button className="leader-preview-heading" onClick={()=>navigate('Leaderboard')}><span className="eyebrow muted">A SAFER COMMUNITY</span><Trophy size={20}/><h2>Hornets defeated</h2><p>November to date · Nov 1–7, 2026</p></button>{leaderboardRows(true)}</section></div>
-      </>}
-      {page==='T-Mobile services'&&<><div className="page-heading"><span className="eyebrow muted">ANOTHER LAYER OF PROTECTION</span><h1>T-Mobile services</h1><p>Explore ideas for staying ahead of scams, from the links you receive to the people you protect.</p></div><div className="concept-list">{concepts.map(c=>{const Icon=icons[c.icon as keyof typeof icons];return <section className="card concept" key={c.title}><div className="concept-art"><Icon size={53} strokeWidth={1}/><span>{c.label}</span></div><div><h2>{c.title}</h2><h3>{c.subtitle}</h3><p>{c.description}</p><p>For example: {c.example}</p><a href={official} target="_blank" rel="noreferrer">Explore concept <ArrowRight size={13}/></a><span className="concept-label">Proposed concept</span></div></section>;})}</div></>}
-      {page==='Leaderboard'&&<><div className="page-heading leaderboard-heading"><div><span className="eyebrow muted">A SAFER COMMUNITY</span><h1>Leaderboard</h1><p>Every hornet defeated is one prevented scam. Here’s how our opt-in community is doing.</p></div><PeriodSelect value={leaderPeriod} onChange={setLeaderPeriod}/></div><div className="leader-summary"><section className="hero-card"><span className="eyebrow">YOUR COMMUNITY POSITION</span><div className="hero-number"><span>{signedIn&&optedIn?`#${rank}`:'—'}</span><div><h2>{signedIn?`${alias} · You`:'Join a safer community'}</h2><p>{signedIn?(optedIn?`${ranked.find(m=>m.self)?.scores} hornets defeated · scams prevented`:'Your leaderboard visibility is off'):'Sign in to see your community position.'}</p></div><CharacterAvatar hero/></div></section><section className="card privacy-card"><LockKeyhole size={20}/><h3>Your alias. Your choice.</h3><p>Only an opt-in alias and your score appear here. Your real name and browsing history stay private.</p><strong><Check size={14}/>Leaderboard visibility: {signedIn&&optedIn?'Opted in':'Not participating'}</strong><button className="text-pink" onClick={()=>signedIn?openPrivacy():setSignedIn(true)}>{signedIn?'Manage alias & privacy':'Sign in to participate'} <ArrowRight size={12}/></button></section></div><section className="card full-leaderboard"><div className="leader-top"><div><h2>Hornets defeated</h2><p>{leaderPeriod==='all'?'All time':leaderPeriod==='week'?'Past week':'Past 30 days'} · {periodLabels[leaderPeriod]}</p></div><div className="segmented">{(['all','month','week'] as Period[]).map(p=><button key={p} onClick={()=>setLeaderPeriod(p)} className={leaderPeriod===p?'active':''}>{p==='all'?'All time':p==='month'?'Past 30 days':'Past week'}</button>)}</div></div><div className="leader-filters"><label className="control search"><Search size={16}/><input aria-label="Search leaderboard by alias" value={leaderQuery} onChange={e=>setLeaderQuery(e.target.value)} placeholder="Search by alias"/></label><span className="control"><Users size={14}/>All opt-in members</span><span className="control">Your position: {signedIn&&optedIn?`#${rank}`:'—'}</span></div>{leaderboardRows()}{!ranked.some(m=>m.alias.toLowerCase().includes(leaderQuery.toLowerCase()))&&<div className="empty">No aliases match your search.</div>}<div className="leader-bottom">Showing {ranked.filter(m=>m.alias.toLowerCase().includes(leaderQuery.toLowerCase())).length} members</div></section><div className="protection-note"><strong>Protection comes before position.</strong><p>Never seek out suspicious sites to raise a score. You can change your alias or leave the leaderboard without losing protection.</p></div></>}
-      <footer><span>tango.</span><span>Privacy <b>·</b> Help center <b>·</b> Protection settings</span></footer>
+  const [route, setRoute] = useState<Route>(routeFromHash);
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'));
+  useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem('tango-theme', theme); }, [theme]);
+  const [filter, setFilter] = useState<TierId | 'all'>('all');
+  const [selected, setSelected] = useState<Slain | null>(null);
+  const [badge, setBadge] = useState<Badge | null>(null);
+  const [slain, setSlain] = useState<Slain[]>(startHive);
+  const [newCatch, setNewCatch] = useState<Slain | null>(incoming);
+  const [fresh, setFresh] = useState<string | null>(null);
+  const [board, setBoard] = useState<'week' | 'all'>('all');
+  const [checker, setChecker] = useState(false);
+  const [url, setUrl] = useState('');
+  const [checking, setChecking] = useState(false);
+  const [error, setError] = useState('');
+  const [report, setReport] = useState<SiteReport | null>(null);
+  const abort = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const on = () => { setRoute(routeFromHash()); window.scrollTo(0, 0); };
+    addEventListener('hashchange', on);
+    return () => { removeEventListener('hashchange', on); abort.current?.abort(); };
+  }, []);
+
+  const go = (r: Route) => { location.hash = r === 'week' ? 'week' : ''; setRoute(r); };
+
+  const inBoard = (h: Slain[]) => (board === 'all' ? h.length : h.filter(s => s.date >= WEEK_START).length);
+  const scale = inBoard(seeded) / 42;
+  const ranked = members.map(m => m.alias === ME ? { ...m, self: true, score: inBoard(slain) } : { ...m, self: false, score: Math.round(m.scores * scale) }).sort((a, b) => b.score - a.score);
+  const rank = ranked.findIndex(m => m.self) + 1;
+  const shown = slain.filter(s => filter === 'all' || tierOf(s).id === filter);
+  const legendary = slain.filter(s => tierOf(s).id === 'legendary').length;
+  const mythic = slain.some(s => s.mythic);
+  const badges: Badge[] = [
+    ...slain.filter(s => s.first).map(s => ({ id: `first-${s.id}`, name: 'First slayer', detail: s.title, tier: 'legendary' as const, earned: true, domain: s.domain, date: s.date })),
+    ...baseBadges.map(b => (b.id === 'giant' ? { ...b, earned: legendary > 0 } : b.id === 'million' ? { ...b, earned: mythic } : b)),
+  ];
+  const earned = badges.filter(b => b.earned).length;
+  const caught = slain.filter(s => s.id.startsWith('new-')).map(s => ({ id: s.id, alias: ME, domain: s.domain, title: s.title, category: s.category, date: s.date, reports: s.reports, mythic: s.mythic }));
+
+  function closeChecker() { abort.current?.abort(); setChecker(false); setChecking(false); }
+  async function submitScan(e: React.FormEvent) {
+    e.preventDefault(); abort.current?.abort();
+    const c = new AbortController(); abort.current = c;
+    setChecking(true); setError(''); setReport(null);
+    try { const r = await scanWebsite(url, c.signal); if (!c.signal.aborted) setReport(r); }
+    catch (err) { if (!c.signal.aborted) setError(err instanceof Error ? err.message : 'Unable to connect to Tango.'); }
+    finally { if (!c.signal.aborted) setChecking(false); }
+  }
+
+  return <div className="app">
+    <div className="streaks" aria-hidden="true"><i /><i /><i /><i /><i /></div>
+    <header className="topbar">
+      <button className="brand" onClick={() => go('home')}><CharacterAvatar />tango<span>.</span></button>
+      <nav>
+        <button className={route === 'home' ? 'active' : ''} onClick={() => go('home')}>Home</button>
+        <button className={route === 'week' ? 'active' : ''} onClick={() => go('week')}>Hornets of the Week</button>
+      </nav>
+      <div className="header-actions">
+        <button className="theme-toggle" aria-label={theme === 'dark' ? 'Light mode' : 'Dark mode'} title={theme === 'dark' ? 'Light mode' : 'Dark mode'} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}</button>
+        <button className="neon-button" onClick={() => { setChecker(true); setError(''); setReport(null); }}><ScanLine size={16} />Check a site</button>
+        <span className="me"><span className="avatar">QO</span>{ME}</span>
+      </div>
+    </header>
+
+    {route === 'week' ? <main><Trophies me={ME} caught={caught} /><footer><span>tango<b>.</b></span><span>HackUTD 2026 · Zero Day</span></footer></main> : (
+      <main className="fit">
+        <section className="hero">
+          <h1 className={mythic ? 'glitch mythic-glow' : 'glitch'} data-text={`You slew ${slain.length} hornets`}>You slew {slain.length} hornets</h1>
+          <div className="stats">
+            <div><Trophy size={16} /><strong>#{rank}</strong><span>Rank</span></div>
+            <div><Crown size={16} /><strong>{legendary}</strong><span>Legendary</span></div>
+            <div><Flame size={16} /><strong>7</strong><span>Day streak</span></div>
+            <div><Award size={16} /><strong>{earned}</strong><span>Badges</span></div>
+          </div>
+        </section>
+
+        <div className="home-grid">
+          <div className="col">
+            <section className="panel tips">
+              <div className="panel-head"><h2 className="tmo-head"><TMobileLogo />Tips</h2></div>
+              <div className="tip-list scroll">
+                {tips.map(t => <article key={t.id} className="tip">
+                  <span className="trend">{t.trend} · {t.count} this week</span>
+                  <h3>{t.title}</h3>
+                  <p>{t.action}</p>
+                  <a href={t.href} target="_blank" rel="noreferrer">{t.link}<ArrowUpRight size={13} /></a>
+                </article>)}
+              </div>
+            </section>
+
+            <section className="panel badges">
+              <div className="panel-head"><h2><Award size={18} />Badges</h2><span className="muted">{earned}/{badges.length}</span></div>
+              <div className="badge-grid scroll">
+                {badges.map(b => { const Icon = badgeIcon(b); return (
+                  <button key={b.id} className={b.earned ? 'badge-icon' : 'badge-icon locked'} style={{ ['--c' as string]: tier(b.tier).color }} aria-label={b.name} title={b.name} onClick={() => setBadge(b)}>
+                    <Icon size={20} />
+                    {!b.earned && <span className="badge-lock"><Lock size={10} /></span>}
+                  </button>
+                ); })}
+              </div>
+            </section>
+          </div>
+
+          <section className="panel hive">
+            <div className="panel-head">
+              <h2><Swords size={18} />The Hive</h2>
+              <div className="chips">
+                <button className={filter === 'all' ? 'chip active' : 'chip'} onClick={() => setFilter('all')}>All {slain.length}</button>
+                {TIERS.map(t => { const n = slain.filter(s => tierOf(s).id === t.id).length; if (t.id === 'mythic' && !n) return null; return <button key={t.id} style={{ ['--c' as string]: t.color }} className={filter === t.id ? 'chip active' : 'chip'} onClick={() => setFilter(t.id)}>{t.name} {n}</button>; })}
+              </div>
+            </div>
+            <div className="hive-grid scroll">
+              {shown.map(s => { const t = tierOf(s); return (
+                <button key={s.id} className={`hornet-card tier-${t.id}${s.id === fresh ? ' fresh' : ''}`} style={{ ['--c' as string]: t.color }} onClick={() => setSelected(s)}>
+                  {s.first && <span className="first-flag"><Crown size={11} />First</span>}
+                  <div className="hornet-stage"><Hornet tierId={t.id} size={84} dead /><span className="slash" /></div>
+                  <span className="tier-pill">{t.name}</span>
+                  <strong>{s.title}</strong>
+                  <small>{fmtDate(s.date)} · {s.category}</small>
+                </button>
+              ); })}
+            </div>
+          </section>
+
+          <div className="col">
+            <section className="panel board">
+              <div className="panel-head">
+                <h2><Trophy size={18} />Leaderboard</h2>
+                <div className="segmented small">
+                  <button className={board === 'week' ? 'active' : ''} onClick={() => setBoard('week')}>Week</button>
+                  <button className={board === 'all' ? 'active' : ''} onClick={() => setBoard('all')}>All time</button>
+                </div>
+              </div>
+              <ol className="ranks scroll">
+                {ranked.map((m, i) => (
+                  <li key={m.alias} className={`${m.self ? 'you' : ''}${m.self && mythic ? ' mythic' : ''} ${i < 3 ? `podium p${i + 1}` : ''}`}>
+                    <span className="pos">{String(i + 1).padStart(2, '0')}</span>
+                    <span className="avatar small">{m.alias.match(/[A-Z]/g)?.join('').slice(0, 2)}</span>
+                    <span className="alias">{m.alias}{m.self && <em>You</em>}{m.self && mythic && <em className="million-tag"><Gem size={10} />1 in 1M</em>}</span>
+                    <b>{m.score}</b>
+                  </li>
+                ))}
+              </ol>
+            </section>
+
+            <button className="panel week-cta" onClick={() => go('week')}>
+              <div className="panel-head"><h2><Crown size={18} />Hornets of the Week</h2><ArrowUpRight size={16} /></div>
+              <div className="mini-shelf">
+                {[...caught, ...weekly].slice(0, 3).map(w => { const t = tierOf(w); return (
+                  <div key={w.id} className="mini-trophy" style={{ ['--c' as string]: t.color }}>
+                    <Hornet tierId={t.id} size={70} flutter />
+                    <span className="mini-pedestal" />
+                    <strong>{w.alias}</strong>
+                    <small>{t.name}</small>
+                  </div>
+                ); })}
+              </div>
+            </button>
+          </div>
+        </div>
     </main>
-    {selected&&<Modal title={selected.title} close={()=>setSelected(null)}><span className="badge">{selected.category}</span><p className="modal-domain">{selected.domain}</p><h3>Why it was flagged</h3><p>{selected.reason}</p><div className="result-box"><ShieldCheck size={18}/>{selected.action} · Prevented</div><h3>Another layer of protection</h3><p>Review T-Mobile’s protection options for additional steps you can take.</p><a className="pink-button" href={official} target="_blank" rel="noreferrer">Explore T-Mobile services <ExternalLink size={14}/></a></Modal>}
-    {privacy&&<Modal title="Alias & privacy" close={()=>setPrivacy(false)}><form onSubmit={e=>{e.preventDefault();setAlias(draftAlias.trim());setOptedIn(draftOptedIn);setPrivacy(false);}}><p>Your alias and score are the only details visible on the leaderboard. These demo preferences last until you refresh.</p><label className="field-label">Community alias<input required maxLength={24} value={draftAlias} pattern=".*\S.*" onChange={e=>setDraftAlias(e.target.value)}/></label><label className="checkbox-label"><input type="checkbox" checked={draftOptedIn} onChange={e=>setDraftOptedIn(e.target.checked)}/>Show my alias and score on the leaderboard</label><button className="pink-button" type="submit">Save preferences</button></form></Modal>}
-    {checker&&<Modal title="Check a website" close={closeChecker}><p>Get a security report using the same Tango checks as the browser extension.</p><form onSubmit={submitScan}><label className="field-label">Website address<input required type="text" placeholder="https://example.com" value={url} onChange={e=>setUrl(e.target.value)} disabled={checking}/></label><button type="submit" className="pink-button" disabled={checking}><ScanLine size={16}/>{checking?'Checking website…':'Check website'}</button></form>{checking&&<p role="status">Reviewing reputation and website signals. This may take up to two minutes.</p>}{error&&<p role="alert" className="error">{error}</p>}{report&&<div className="report" role="status"><span className={`badge risk-${report.risk_level}`}>{report.risk_level==='none'?'No detected risk':`${report.risk_level} risk`} · {report.score}/100</span><h3>{report.headline}</h3><p>{report.summary}</p>{report.reasons.map((r,i)=><div className="report-reason" key={i}><strong>{r.title}</strong><p>{r.detail}</p></div>)}<small>Confidence: {report.confidence}. A scan cannot guarantee that a website is safe.</small></div>}</Modal>}
+    )}
+
+    {newCatch && route === 'home' && <NewCatch hornet={newCatch} onDone={() => {
+      setSlain(h => [newCatch, ...h]);
+      setFilter('all');
+      setFresh(newCatch.id);
+      setNewCatch(null);
+      document.querySelector('.hive-grid')?.scrollTo({ top: 0 });
+    }} />}
+
+    {selected && (() => { const t = tierOf(selected); return (
+      <Modal title={selected.title} close={() => setSelected(null)} className="slain-modal">
+        <div className="slain-hero" style={{ ['--c' as string]: t.color }}>
+          <Hornet tierId={t.id} size={170} dead />
+          <div>
+            <span className="tier-pill">{t.name}</span>
+            <h3>{t.species}</h3>
+            <p className="latin">{t.latin}</p>
+            {selected.first && <span className="first-flag inline"><Crown size={12} />First slayer</span>}
+          </div>
+        </div>
+        <dl className="facts">
+          <div><dt>Slain</dt><dd>{fmtDate(selected.date)}, {fmtTime(selected.date)}</dd></div>
+          <div><dt>Type</dt><dd>{selected.category}</dd></div>
+          <div><dt>Reports</dt><dd>{selected.reports === 0 ? 'First' : selected.reports.toLocaleString()}</dd></div>
+          <div><dt>Status</dt><dd>Blocked</dd></div>
+        </dl>
+        <ul className="reasons">{selected.reasons.map(r => <li key={r}>{r}</li>)}</ul>
+      </Modal>
+    ); })()}
+
+    {badge && (() => { const Icon = badgeIcon(badge); return (
+      <Modal title={badge.name} close={() => setBadge(null)} className="badge-modal">
+        <div className={badge.earned ? 'badge-hero' : 'badge-hero locked'} style={{ ['--c' as string]: tier(badge.tier).color }}>
+          <span className={badge.earned ? 'badge-icon big' : 'badge-icon big locked'}><Icon size={44} /></span>
+          <div>
+            <span className="tier-pill">{tier(badge.tier).name}</span>
+            <h3>{badge.detail}</h3>
+          </div>
+        </div>
+        <dl className="facts">
+          <div><dt>Status</dt><dd>{badge.earned ? 'Earned' : 'Locked'}</dd></div>
+          {badge.date && <div><dt>Earned</dt><dd>{fmtDate(badge.date)}</dd></div>}
+        </dl>
+      </Modal>
+    ); })()}
+
+    {checker && <Modal title="Check a site" close={closeChecker}>
+      <form onSubmit={submitScan}>
+        <label className="field">Site<input required type="text" placeholder="example.com" value={url} onChange={e => setUrl(e.target.value)} disabled={checking} /></label>
+        <button type="submit" className="neon-button wide" disabled={checking}><ScanLine size={16} />{checking ? 'Checking…' : 'Check'}</button>
+      </form>
+      {checking && <p role="status" className="muted">Checking… up to 2 minutes.</p>}
+      {error && <p role="alert" className="error">{error}</p>}
+      {report && <div className="report" role="status">
+        <span className={`tier-pill risk-${report.risk_level}`}>{report.risk_level === 'none' ? 'No risk found' : `${report.risk_level} risk`} · {report.score}/100</span>
+        <h3>{report.headline}</h3>
+        <ul className="reasons">{report.reasons.map((r, i) => <li key={i}><strong>{r.title}</strong> {r.detail}</li>)}</ul>
+        <small className="muted">Confidence: {report.confidence}</small>
+      </div>}
+    </Modal>}
   </div>;
 }

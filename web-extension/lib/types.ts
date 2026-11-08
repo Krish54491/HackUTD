@@ -55,7 +55,8 @@ export type BgMessage =
   | { type: 'GET_LISTINGS_ENABLED'; site: string }
   | { type: 'SET_LISTINGS_ENABLED'; tabId: number; site: string; enabled: boolean }
   | { type: 'LEAVE_SITE'; tabId?: number }
-  | { type: 'SOUND'; sound: Sound; action: 'play' | 'stop' };
+  | { type: 'SOUND'; sound: Sound; action: 'play' | 'stop' }
+  | { type: 'DEMO_LEVEL'; level: RiskLevel };
 
 /** Messages sent from the background to content scripts. */
 export type TabMessage =

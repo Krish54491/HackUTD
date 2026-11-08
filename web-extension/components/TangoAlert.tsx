@@ -3,9 +3,11 @@ import { browser } from 'wxt/browser';
 import type { SiteReport } from '@/lib/types';
 import type { Sound } from '@/lib/sound-types';
 import type { Rect } from '@/lib/lurk';
-import { tipFor } from '@/lib/tmobile-tips';
+import { bragFor, tipFor } from '@/lib/tmobile-tips';
+import { dashboardUrl } from '@/lib/dashboard';
 import { Character, LEVEL_LABEL } from './ui';
 import { RiskReport } from './RiskReport';
+import { TMobileLogo, TMobileMark } from './TMobileLogo';
 
 type Props = {
   report: SiteReport;
@@ -17,7 +19,7 @@ type Props = {
 };
 
 /** Order matters: each phase keeps everything the earlier ones put on screen. Medium skips sneak and slash. */
-const PHASES = ['sneak', 'roll', 'pop', 'slash', 'slide', 'talk'] as const;
+const PHASES = ['sneak', 'roll', 'pop', 'slash', 'cheer', 'slide', 'talk'] as const;
 type Phase = (typeof PHASES)[number];
 
 /** Hornet: out of the page element, dancing around, to its spot beside Tango. */
@@ -51,20 +53,18 @@ const PIECE_FLY: [number, number, number][] = [
 /** Hornet image height / width, for the cut angles. */
 const HORNET_ASPECT = 207 / 320;
 const SLASH_MS = PIECES_FLY_MS + 1100;
-
-/** Phase start times, in ms from mount. */
+const SLASH_AT = ROLL_AT + ROLL_MS + 650;
+/** Phase start times, in ms from mount. Cheer (cape and brag) waits for Next. */
 const TIMELINE: Record<'high' | 'medium', [Phase, number][]> = {
   high: [
     ['roll', ROLL_AT],
     ['pop', ROLL_AT + ROLL_MS],
-    ['slash', ROLL_AT + ROLL_MS + 650],
-    ['slide', ROLL_AT + ROLL_MS + 650 + SLASH_MS],
-    ['talk', ROLL_AT + ROLL_MS + 650 + SLASH_MS + SLIDE_MS],
+    ['slash', SLASH_AT],
+    ['cheer', SLASH_AT + SLASH_MS],
   ],
   medium: [
     ['pop', ROLL_MS],
-    ['slide', ROLL_MS + 700],
-    ['talk', ROLL_MS + 700 + SLIDE_MS],
+    ['cheer', ROLL_MS + 500],
   ],
 };
 
@@ -100,7 +100,7 @@ export function TangoAlert({ report, lurk, onLeave, onContinue, sound }: Props) 
   useEffect(() => {
     if (reducedMotion()) {
       setDark(true);
-      setPhase('talk');
+      setPhase('cheer');
       return;
     }
     const timers: number[] = [];
@@ -114,6 +114,7 @@ export function TangoAlert({ report, lurk, onLeave, onContinue, sound }: Props) 
           sound('scrape', 'stop');
           sound('pop', 'play');
         }
+        if (p === 'cheer') sound('pop', 'play');
         setPhase(p);
       });
       if (p === 'slash') for (const cut of CUT_MS) at(ms + cut, () => sound('slash', 'play'));
@@ -125,10 +126,17 @@ export function TangoAlert({ report, lurk, onLeave, onContinue, sound }: Props) 
   }, [high, sound]);
 
   useEffect(() => {
-    if (phase === 'talk' && !reportOpen) nextRef.current?.focus();
+    if ((phase === 'talk' || phase === 'cheer') && !reportOpen) nextRef.current?.focus();
   }, [phase, step, reportOpen]);
 
+  const endCheer = () => {
+    if (reducedMotion()) return setPhase('talk');
+    setPhase('slide');
+    window.setTimeout(() => setPhase('talk'), SLIDE_MS);
+  };
+
   const tip = tipFor(report);
+  const brag = bragFor(report);
   const risky = report.reasons.filter(r => r.severity !== 'info');
   const why = (risky.length ? risky : report.reasons).slice(0, 4);
   const sceneClass = [
@@ -136,7 +144,8 @@ export function TangoAlert({ report, lurk, onLeave, onContinue, sound }: Props) 
     high && 'tg-high',
     reached('pop') && 'tg-landed tg-popped',
     phase === 'slash' && 'tg-slash',
-    reached('slide') && 'tg-talking',
+    phase === 'cheer' && 'tg-cheer',
+    reached('cheer') && 'tg-talking',
   ]
     .filter(Boolean)
     .join(' ');
@@ -155,7 +164,7 @@ export function TangoAlert({ report, lurk, onLeave, onContinue, sound }: Props) 
         aria-labelledby="tg-say-title"
         aria-describedby="tg-say"
       >
-        {high && !reached('slide') && (
+        {high && !reached('cheer') && (
           <div className="tg-hornet-spot" aria-hidden>
             <div className="tg-hornet">
               <div className="tg-hornet-fly" ref={flyRef}>
@@ -205,10 +214,33 @@ export function TangoAlert({ report, lurk, onLeave, onContinue, sound }: Props) 
               <span className="tg-limb tg-arm-point">
                 <img src={asset('/tango/arm-point.png')} alt="" draggable={false} />
               </span>
+              {phase === 'cheer' && (
+                <span className="tg-cape" aria-hidden>
+                  <TMobileMark />
+                </span>
+              )}
               <div className="tg-body">
                 <Character mood={high ? 'angry' : 'suspicious'} size={150} />
+                {(phase === 'cheer' || reached('talk')) && (
+                  <span className="tg-tmo-pin" title="T-Mobile">
+                    <TMobileMark />
+                  </span>
+                )}
               </div>
             </div>
+
+            {phase === 'cheer' && (
+              <div className="tg-bubble tg-brag" role="status" aria-labelledby="tg-brag-tmo">
+                <TMobileLogo />
+                <p id="tg-brag-tmo"><strong>{brag.tmo}</strong> {brag.tango}</p>
+                <div className="tg-actions">
+                  <span />
+                  <button className="pg-btn" ref={nextRef} onClick={endCheer}>
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
 
             {phase === 'talk' && (
               <div className="tg-bubble" key={step}>
@@ -239,7 +271,7 @@ export function TangoAlert({ report, lurk, onLeave, onContinue, sound }: Props) 
                 )}
                 {step === 'tip' && (
                   <>
-                    <span className="pg-pill tg-pill-tmo">T-Mobile tip</span>
+                    <span className="pg-pill tg-pill-tmo"><TMobileLogo /> tip</span>
                     <p className="tg-say-title" id="tg-say-title">
                       {tip.title}
                     </p>
@@ -253,9 +285,14 @@ export function TangoAlert({ report, lurk, onLeave, onContinue, sound }: Props) 
                       <button className="pg-link" onClick={() => setStep('confirm')}>
                         Continue to site
                       </button>
-                      <button className="pg-btn" ref={nextRef} onClick={onLeave}>
-                        Leave site
-                      </button>
+                      <span className="tg-actions-btns">
+                        <button className="pg-btn tg-btn-dash" onClick={() => window.open(dashboardUrl(report, document.title), '_blank', 'noopener')}>
+                          Dashboard
+                        </button>
+                        <button className="pg-btn" ref={nextRef} onClick={onLeave}>
+                          Leave site
+                        </button>
+                      </span>
                     </div>
                   </>
                 )}

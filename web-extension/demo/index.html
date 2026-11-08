@@ -3,12 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- Tango demo mode (localhost + the deployed demo host, see lib/demo.ts): warning 5 s after load. ?level=medium for medium. -->
+    <!-- Tango demo mode (localhost + the deployed demo host, see lib/demo.ts): warning 5 s after load. ?level=medium for medium, ?level=safe for the toolbar's safe dot only. -->
     <meta name="tango-demo" content="high" />
     <meta name="robots" content="noindex, nofollow" />
     <script>
-      if (new URLSearchParams(location.search).get('level') === 'medium')
-        document.querySelector('meta[name="tango-demo"]').content = 'medium';
+      var lvl = new URLSearchParams(location.search).get('level');
+      if (lvl === 'medium' || lvl === 'safe')
+        document.querySelector('meta[name="tango-demo"]').content = lvl;
     </script>
     <title>Claim Your Award · Brightpath Scholars Foundation</title>
     <link

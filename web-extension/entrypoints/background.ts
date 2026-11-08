@@ -47,14 +47,64 @@ const BADGE: Record<RiskLevel | 'checking', { text: string; color: string }> = {
   medium: { text: '!', color: '#D9A400' },
   high: { text: '!!', color: '#D2232A' },
 };
+const TITLE: Record<RiskLevel | 'checking', string> = {
+  checking: 'Tango · Checking',
+  none: 'Safe · T-Mobile Scam Shield active',
+  low: 'Low risk · Tango',
+  medium: 'Medium risk · Tango',
+  high: 'High risk · Tango',
+};
+
+type IconSet = Record<number, ImageData>;
+let icons: Promise<{ plain: IconSet; safe: IconSet }> | null = null;
+
+/** Tango's face for the toolbar; the safe version has a T-Mobile magenta dot. */
+function loadIcons() {
+  icons ??= (async () => {
+    const url = (browser.runtime.getURL as (p: string) => string)('/characters/light-mode.png');
+    const bmp = await createImageBitmap(await (await fetch(url)).blob());
+    const side = bmp.height * 0.66;
+    const draw = (size: number, dot: boolean) => {
+      const g = new OffscreenCanvas(size, size).getContext('2d')!;
+      g.drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, size, size);
+      if (dot) {
+        const r = size * 0.19;
+        const c = size - r - size * 0.04;
+        g.beginPath();
+        g.arc(c, c, r + size * 0.06, 0, Math.PI * 2);
+        g.fillStyle = '#fff';
+        g.fill();
+        g.beginPath();
+        g.arc(c, c, r, 0, Math.PI * 2);
+        g.fillStyle = '#E20074';
+        g.fill();
+      }
+      return g.getImageData(0, 0, size, size);
+    };
+    return { plain: { 16: draw(16, false), 32: draw(32, false) }, safe: { 16: draw(16, true), 32: draw(32, true) } };
+  })();
+  return icons;
+}
+
+async function setIndicator(tabId: number, kind: keyof typeof BADGE | null) {
+  try {
+    const i = await loadIcons();
+    await browser.action.setIcon({ tabId, imageData: kind === 'none' ? i.safe : i.plain });
+  } catch {
+    /* tab closed, or icon unavailable */
+  }
+  await browser.action.setTitle({ tabId, title: kind ? TITLE[kind] : 'Tango' }).catch(() => {});
+}
+
 async function setBadge(tabId: number, kind: keyof typeof BADGE | null, listingCount = 0) {
+  await setIndicator(tabId, kind);
   try {
     if (listingCount > 0 && (kind === 'none' || kind === null)) {
       await browser.action.setBadgeBackgroundColor({ tabId, color: '#E20074' });
       await browser.action.setBadgeText({ tabId, text: String(listingCount) });
       return;
     }
-    if (!kind) return void (await browser.action.setBadgeText({ tabId, text: '' }));
+    if (!kind || kind === 'none') return void (await browser.action.setBadgeText({ tabId, text: '' }));
     await browser.action.setBadgeBackgroundColor({ tabId, color: BADGE[kind].color });
     await browser.action.setBadgeText({ tabId, text: BADGE[kind].text });
   } catch {
@@ -205,6 +255,10 @@ async function handle(msg: BgMessage, tabId: number | undefined): Promise<unknow
       await playSound(msg.sound, msg.action);
       return { ok: true };
 
+    case 'DEMO_LEVEL':
+      if (tabId !== undefined) await setBadge(tabId, msg.level);
+      return { ok: true };
+
     case 'LEAVE_SITE': {
       const target = msg.tabId ?? tabId; // popup passes tabId; the page modal is the sender tab
       if (target === undefined) return { ok: false };
@@ -230,6 +284,10 @@ export default defineBackground(() => {
     for (const k of inFlight.keys()) if (k.startsWith(`${tabId}:`)) inFlight.delete(k);
     void session.remove(`tab:${tabId}`);
   });
+
+  loadIcons()
+    .then(i => browser.action.setIcon({ imageData: i.plain }))
+    .catch(() => {});
 
   // Warm up the identity so the first scan is fast.
   api.client().catch(e => console.warn('[tango] Spacetime unavailable:', e));

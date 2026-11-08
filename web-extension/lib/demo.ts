@@ -8,11 +8,12 @@ const DEMO_HOSTS = new Set(['localhost', '127.0.0.1', 'brightpath-scholars.devpo
 
 /**
  * Demo mode for testing the warning without a scan: a page on a demo host
- * with <meta name="tango-demo" content="high|medium">. Other websites can't trigger it.
+ * with <meta name="tango-demo" content="high|medium|safe">. Other websites can't trigger it.
  */
-export function demoLevel(): Extract<RiskLevel, 'high' | 'medium'> | null {
+export function demoLevel(): Extract<RiskLevel, 'high' | 'medium' | 'none'> | null {
   if (!DEMO_HOSTS.has(location.hostname)) return null;
   const level = document.querySelector('meta[name="tango-demo"]')?.getAttribute('content');
+  if (level === 'safe') return 'none';
   return level === 'high' || level === 'medium' ? level : null;
 }
 

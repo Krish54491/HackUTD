@@ -120,7 +120,8 @@ export default defineContentScript({
     }
 
     if (demo) {
-      ctx.setTimeout(() => void show(demoReport(demo)), DEMO_DELAY_MS);
+      void bg({ type: 'DEMO_LEVEL', level: demo }).catch(() => {});
+      if (demo !== 'none') ctx.setTimeout(() => void show(demoReport(demo)), DEMO_DELAY_MS);
       return;
     }
 
