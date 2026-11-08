@@ -75,7 +75,7 @@ fun TangoApp(
         containerColor = Background,
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            Column(Modifier.background(Color.White).statusBarsPadding()) {
+            Column(Modifier.background(MaterialTheme.colorScheme.surface).statusBarsPadding()) {
                 Row(Modifier.fillMaxWidth().height(68.dp).padding(horizontal = 22.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (detail) IconButton(onClick = { nav.popBackStack() }) {
@@ -87,7 +87,7 @@ fun TangoApp(
             }
         },
         bottomBar = {
-            if (route in roots) NavigationBar(containerColor = Color.White, tonalElevation = 0.dp) {
+            if (route in roots) NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
                 listOf(Triple("home", "Home", AppIcons.Shield), Triple("history", "History", AppIcons.History), Triple("settings", "Settings", AppIcons.Settings)).forEach { (path, label, icon) ->
                     NavigationBarItem(selected = route == path, onClick = { root(path) },
                         icon = { Icon(icon, label) }, label = { Text(label, fontSize = 11.sp) },
