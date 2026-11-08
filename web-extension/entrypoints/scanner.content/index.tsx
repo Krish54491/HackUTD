@@ -1,14 +1,13 @@
 /**
- * Runs on every page: extracts privacy-filtered signals, hands them to the
- * background for a (cached) security check, and controls the BLOCKING popup:
+ * Runs on every page: extracts privacy-filtered signals and hands them to the
+ * background for a (cached) security check. Nothing shows while the check runs.
  *
- *  - First visit (no local result yet): "Hold on, let me check this site" with
- *    the character. Clean result: it says "All clear" and closes itself.
- *    Risky result: it turns into the full security report.
- *  - Known-risky site: the report goes up immediately from the local cache.
- *  - Once the user picks "Continue to site anyway" (or ×) the report doesn't
- *    come back for that domain until the browser restarts, unless the risk
- *    level later goes UP.
+ *  - Medium or high risk: the page is blocked and darkened, Tango rolls in
+ *    (high: after a hornet sneaks out of a page element) and explains the risk
+ *    (from the local cache right away on a known site).
+ *  - None or low risk: nothing on the page; the toolbar badge has the result.
+ *  - Once the user picks "Continue to site" the warning doesn't come back for
+ *    that domain until the browser restarts, unless the risk level later goes UP.
  *
  * Blocking means the page behind is `inert` (no clicks, typing or focus),
  * scrolling is locked, and there's no click-outside / Escape dismissal.
@@ -17,22 +16,36 @@ import ReactDOM from 'react-dom/client';
 import { browser } from 'wxt/browser';
 import { defineContentScript } from 'wxt/utils/define-content-script';
 import { createShadowRootUi, type ShadowRootContentScriptUi } from 'wxt/utils/content-script-ui/shadow-root';
-import { RiskReport } from '@/components/RiskReport';
-import { SiteCheck, SAFE_CLOSE_MS, type CheckView } from '@/components/SiteCheck';
+import { TangoAlert } from '@/components/TangoAlert';
 import { collectSignals } from '@/lib/signals';
 import { scannableDomain } from '@/lib/domain';
 import { blockPage } from '@/lib/block-page';
 import { createTopLayer, type TopLayer } from '@/lib/top-layer';
 import { bg } from '@/lib/messaging';
+import { DEMO_DELAY_MS, demoLevel, demoReport } from '@/lib/demo';
+import { lurkSpot } from '@/lib/lurk';
+import type { Sound } from '@/lib/sound-types';
 import type { CachedForPage, RiskLevel, SiteReport, TabMessage } from '@/lib/types';
 import '@/components/tango.css';
 
 const RANK: Record<RiskLevel, number> = { none: 0, low: 1, medium: 2, high: 3 };
-/** Server-cached sites answer in well under a second; don't flash the popup for those. */
-const CHECKING_GRACE_MS = 300;
+const WARN_FROM = RANK.medium;
 const SIGNALS_DELAY_MS = 500;
 
-type View = CheckView | { kind: 'report'; report: SiteReport };
+const sound = (s: Sound, action: 'play' | 'stop') => void bg({ type: 'SOUND', sound: s, action }).catch(() => {});
+
+/** Resolves once the tab is in front, so the entrance isn't played to a background tab. */
+function whenVisible(): Promise<void> {
+  if (document.visibilityState === 'visible') return Promise.resolve();
+  return new Promise(resolve => {
+    const on = () => {
+      if (document.visibilityState !== 'visible') return;
+      document.removeEventListener('visibilitychange', on);
+      resolve();
+    };
+    document.addEventListener('visibilitychange', on);
+  });
+}
 
 export default defineContentScript({
   matches: ['<all_urls>'],
@@ -40,27 +53,29 @@ export default defineContentScript({
   cssInjectionMode: 'ui',
 
   async main(ctx) {
-    const domain = scannableDomain(location.href);
+    const demo = demoLevel();
+    const domain = demo ? location.host : scannableDomain(location.href);
     if (!domain) return;
 
     let ackedLevel: RiskLevel | null = null;
-    let resolved = false; // a result (or error) arrived for this page load
-    let skipped = false; // the user skipped the wait; a risky result still warns
-    let dismissed = false; // the user closed the report on this page load
-    let current: View | null = null;
-    let closeTimer: number | undefined;
-
-    // ---------- the one shadow-root modal, re-rendered as the view changes ----------
+    let shown: SiteReport | null = null;
     let ui: ShadowRootContentScriptUi<ReactDOM.Root> | null = null;
-    let mounting: Promise<void> | null = null;
-    let unblock = () => {};
     let layer: TopLayer | null = null;
+    let unblock = () => {};
 
-    const ensureMounted = (): Promise<void> => {
-      if (mounting) return mounting;
+    const shouldWarn = (r: SiteReport) =>
+      RANK[r.risk_level] >= WARN_FROM && (ackedLevel === null || RANK[r.risk_level] > RANK[ackedLevel]);
+
+    async function show(report: SiteReport) {
+      if (shown && RANK[report.risk_level] <= RANK[shown.risk_level]) return;
+      shown = report;
+      await whenVisible();
+      if (shown !== report) return;
+      close();
+      const lurk = lurkSpot();
       // Inside our own modal <dialog>: the browser's top layer, above every z-index on the page.
       const l = (layer = createTopLayer());
-      const p: Promise<void> = createShadowRootUi(ctx, {
+      const u = await createShadowRootUi(ctx, {
         name: 'tango-report',
         position: 'modal',
         anchor: l.el,
@@ -75,43 +90,23 @@ export default defineContentScript({
           unblock();
           root?.unmount();
         },
-      }).then(u => {
-        if (mounting !== p) return; // closed before it finished mounting
-        ui = u;
-        l.open(); // in the document and the top layer first, so blockPage sees the real ancestors
-        u.mount();
       });
-      return (mounting = p);
-    };
-
-    async function show(view: View) {
-      current = view;
-      clearTimeout(closeTimer);
-      await ensureMounted();
-      if (current !== view) return; // superseded while mounting
-      ui?.mounted?.render(
-        <div className="pg-backdrop">
-          {view.kind === 'report' ? (
-            <RiskReport
-              report={view.report}
-              onClose={() => acknowledge(view.report)}
-              secondary={{ label: 'Continue to site anyway', onClick: () => acknowledge(view.report) }}
-              primary={{
-                label: '← Leave this website',
-                onClick: () => bg({ type: 'LEAVE_SITE' }).catch(() => history.back()),
-              }}
-            />
-          ) : (
-            <SiteCheck domain={domain!} view={view} onSkip={skip} />
-          )}
-        </div>
+      if (shown !== report || layer !== l) return;
+      ui = u;
+      l.open(); // in the document and the top layer first, so blockPage sees the real ancestors
+      u.mount();
+      u.mounted?.render(
+        <TangoAlert
+          report={report}
+          lurk={lurk}
+          sound={sound}
+          onContinue={() => acknowledge(report)}
+          onLeave={() => bg({ type: 'LEAVE_SITE' }).catch(() => history.back())}
+        />
       );
     }
 
     function close() {
-      clearTimeout(closeTimer);
-      current = null;
-      mounting = null;
       ui?.remove();
       ui = null;
       layer?.destroy();
@@ -119,39 +114,18 @@ export default defineContentScript({
     }
 
     function acknowledge(report: SiteReport) {
-      dismissed = true;
       ackedLevel = report.risk_level;
-      void bg({ type: 'ACK_SITE', domain: domain!, level: report.risk_level }).catch(() => {});
+      if (!demo) void bg({ type: 'ACK_SITE', domain: domain!, level: report.risk_level }).catch(() => {});
       close();
     }
 
-    function skip() {
-      skipped = true;
-      close();
-    }
-
-    const shouldWarn = (r: SiteReport) =>
-      r.risk_level !== 'none' && !dismissed && (ackedLevel === null || RANK[r.risk_level] > RANK[ackedLevel]);
-
-    function onResult(report: SiteReport | null, error?: string) {
-      resolved = true;
-      const checking = current?.kind === 'checking';
-      if (report && shouldWarn(report)) {
-        if (current?.kind !== 'report') void show({ kind: 'report', report });
-        return;
-      }
-      if (!checking) return;
-      if (report) {
-        // Clean (or risky but already acknowledged): say so, then get out of the way.
-        void show({ kind: 'safe' });
-        closeTimer = ctx.setTimeout(close, SAFE_CLOSE_MS);
-      } else if (!skipped) {
-        void show({ kind: 'error', message: error ?? 'Check failed' });
-      }
+    if (demo) {
+      ctx.setTimeout(() => void show(demoReport(demo)), DEMO_DELAY_MS);
+      return;
     }
 
     browser.runtime.onMessage.addListener((msg: TabMessage) => {
-      if (msg.type === 'SCAN_RESULT' && msg.domain === domain) onResult(msg.report, msg.error);
+      if (msg.type === 'SCAN_RESULT' && msg.domain === domain && msg.report && shouldWarn(msg.report)) void show(msg.report);
     });
 
     // ---------- start ----------
@@ -159,17 +133,9 @@ export default defineContentScript({
       (): CachedForPage => ({ report: null, ackedLevel: null })
     );
     ackedLevel = cached.ackedLevel;
-    if (cached.report) {
-      // Known site: warn right away if it's risky; clean sites see nothing.
-      if (shouldWarn(cached.report)) void show({ kind: 'report', report: cached.report });
-      resolved = true;
-    } else {
-      ctx.setTimeout(() => {
-        if (!resolved && !skipped && !current) void show({ kind: 'checking' });
-      }, CHECKING_GRACE_MS);
-    }
+    if (cached.report && shouldWarn(cached.report)) void show(cached.report);
 
-    // Give late-loading checkout widgets a moment before sampling (the page is blocked meanwhile).
+    // Give late-loading checkout widgets a moment before sampling.
     ctx.setTimeout(() => {
       bg({ type: 'PAGE_SIGNALS', domain, signals: collectSignals(domain) }).catch(() => {});
     }, SIGNALS_DELAY_MS);

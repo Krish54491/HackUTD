@@ -1,3 +1,5 @@
+import type { Sound } from './sound-types';
+
 export type RiskLevel = 'none' | 'low' | 'medium' | 'high';
 export type Severity = 'info' | 'low' | 'medium' | 'high';
 export type Reason = { title: string; detail: string; severity: Severity };
@@ -52,7 +54,8 @@ export type BgMessage =
   | { type: 'LISTINGS_BLOCKED'; site: string; blocked: { key: string; title: string; reason: string }[] }
   | { type: 'GET_LISTINGS_ENABLED'; site: string }
   | { type: 'SET_LISTINGS_ENABLED'; tabId: number; site: string; enabled: boolean }
-  | { type: 'LEAVE_SITE'; tabId?: number };
+  | { type: 'LEAVE_SITE'; tabId?: number }
+  | { type: 'SOUND'; sound: Sound; action: 'play' | 'stop' };
 
 /** Messages sent from the background to content scripts. */
 export type TabMessage =

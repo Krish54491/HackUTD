@@ -63,11 +63,12 @@ npm run build          # production build in .output/chrome-mv3 (load unpacked)
 Behavior decisions:
 
 - Every new domain is scanned once. Results are cached globally in Spacetime for 24h and locally for 6h.
-- The toolbar badge shows the result (✓ / ! / !!). The modal opens for medium and high risk, and for low risk on checkout pages.
-- "Continue to site anyway" silences the modal for that domain for the rest of the browser session.
+- Checks run silently. The toolbar badge shows the result (✓ / ! / !!).
+- Medium and high risk (`components/TangoAlert.tsx`). High: a hornet sneaks out of a page element (buy button, payment form, big image; `lib/lurk.ts`) and dances around while the page darkens, then Tango rolls in from the right, pops out its limbs and slices it into five pieces with a slash sound per cut. Medium: Tango rolls in and pops out its limbs. Tango then slides left, explains the risk in a speech bubble, and shows a T-Mobile tip picked from the report (`lib/tmobile-tips.ts`). Sounds play from an offscreen document (`entrypoints/offscreen/`) so page autoplay rules don't mute them.
+- Closing the full report returns to the speech bubble. "Continue to site" asks for confirmation, then silences the warning for that domain for the rest of the browser session.
 - Suspicious listings collapse into a pink stub with a "Show anyway" link. "Turn off for this site" is stored locally and synced to Spacetime as a SHA-256 hash of the domain.
 - Hornets: +1 per risky (medium/high) site warning, at most once per site per day, plus +1 per hidden listing.
-- The gray placeholder circles now use the character art (`public/characters/`). The hornet-killing entrance animation should attach to `[data-tango-hornet-slot]` in `RiskReport.tsx`.
+- The gray placeholder circles now use the character art (`public/characters/`); limbs and the hornet for the entrance are in `public/tango/`.
 
 ## Frontend / Non-Functional extras
 

@@ -8,10 +8,10 @@ export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   manifest: {
     name: 'Tango',
-    description: 'Checks websites for scams before you pay, and hides fake job, scholarship and rental listings.',
-    permissions: ['storage', 'activeTab'],
+    description: 'Flags scam and phishing websites, and hides fake job, scholarship and rental listings.',
+    permissions: ['storage', 'activeTab', 'offscreen'],
     host_permissions: [`${new URL(STDB_HOST).origin}/*`],
     action: { default_title: 'Tango' },
-    web_accessible_resources: [{ resources: ['characters/*.png'], matches: ['<all_urls>'] }],
+    web_accessible_resources: [{ resources: ['characters/*.png', 'tango/*.png'], matches: ['<all_urls>'] }],
   },
 });

@@ -76,7 +76,7 @@ export function RiskReport({ report, onClose, primary, secondary, tertiary, vari
           <div data-tango-hornet-slot className="pg-hornet-slot">
             <Character mood={moodFor(level)} size={140} />
           </div>
-          <p className="pg-side-title">Pause before you pay.</p>
+          <p className="pg-side-title">Think before you click.</p>
           <p className="pg-side-sub">A little caution goes a long way.</p>
         </aside>
       </div>

@@ -3,6 +3,7 @@ import { defineBackground } from 'wxt/utils/define-background';
 import * as api from '@/lib/api';
 import { LOCAL_REPORT_TTL_MS } from '@/lib/config';
 import { normalizeDomain } from '@/lib/domain';
+import { playSound } from '@/lib/sound';
 import type { BgMessage, CachedForPage, PopupState, RiskLevel, SiteReport, TabMessage, TabState } from '@/lib/types';
 
 // ---------- small storage helpers ----------
@@ -68,7 +69,7 @@ const inFlight = new Map<string, Promise<SiteReport | null>>(); // key: `${tabId
 
 /**
  * Check the site open in a tab (cache first), record the result for the popup,
- * and put the blocking report modal over the page for ANY risk level.
+ * and tell the page, which warns for medium and high risk.
  * `signals` are the in-page signals, or null when the popup triggered the check.
  */
 function checkTab(tabId: number, domain: string, signals: unknown | null, force = false): Promise<SiteReport | null> {
@@ -91,9 +92,8 @@ function checkTab(tabId: number, domain: string, signals: unknown | null, force 
     }
     await setTab(tabId, { domain, scan: { state: 'done', report } });
     await setBadge(tabId, report.risk_level);
-    // The page decides what to show: close its "checking" popup, or swap it for the report.
     await tellTab(tabId, { type: 'SCAN_RESULT', domain, report });
-    if (report.risk_level !== 'none') await countWarning(report);
+    if (report.risk_level === 'medium' || report.risk_level === 'high') await countWarning(report);
     return report;
   })().finally(() => inFlight.delete(key));
   inFlight.set(key, p);
@@ -200,6 +200,10 @@ async function handle(msg: BgMessage, tabId: number | undefined): Promise<unknow
       if (!msg.enabled) await setBadge(msg.tabId, cur?.scan.state === 'done' ? cur.scan.report.risk_level : null, 0);
       return { ok: true };
     }
+
+    case 'SOUND':
+      await playSound(msg.sound, msg.action);
+      return { ok: true };
 
     case 'LEAVE_SITE': {
       const target = msg.tabId ?? tabId; // popup passes tabId; the page modal is the sender tab

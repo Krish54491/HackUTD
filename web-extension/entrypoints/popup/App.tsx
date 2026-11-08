@@ -286,8 +286,8 @@ function Checker(props: {
         <div className="pg-hero">
           <Character mood="happy" size={116} />
         </div>
-        <h1>Check before you pay</h1>
-        <p className="pg-sub">Look for signs of scams before you share payment or personal details.</p>
+        <h1>Is this site a scam?</h1>
+        <p className="pg-sub">Check any website for phishing, fake stores and scams.</p>
         <form
           className="pg-card"
           onSubmit={e => {

@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Tango demo mode (localhost + the deployed demo host, see lib/demo.ts): warning 5 s after load. ?level=medium for medium. -->
+    <meta name="tango-demo" content="high" />
+    <meta name="robots" content="noindex, nofollow" />
+    <script>
+      if (new URLSearchParams(location.search).get('level') === 'medium')
+        document.querySelector('meta[name="tango-demo"]').content = 'medium';
+    </script>
+    <title>Claim Your Award · Brightpath Scholars Foundation</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='31' fill='%23c99a2e'/%3E%3Ccircle cx='32' cy='32' r='26' fill='none' stroke='%23fff' stroke-width='2' stroke-dasharray='2 3'/%3E%3Ccircle cx='32' cy='32' r='21' fill='%230f2a4a'/%3E%3Cpath d='M32 17l4.4 9 9.9 1.4-7.2 7 1.7 9.9L32 39.6l-8.8 4.7 1.7-9.9-7.2-7 9.9-1.4z' fill='%23f3d27a'/%3E%3C/svg%3E"
+    />
+    <meta name="theme-color" content="#0f2a4a" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --navy: #0f2a4a;
+        --navy-2: #173a63;
+        --gold: #c99a2e;
+        --gold-soft: #f6efdc;
+        --ink: #1b2430;
+        --muted: #5b6676;
+        --line: #e3e7ee;
+        --bg: #f7f8fa;
+        --green: #1f7a4d;
+      }
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body { margin: 0; font: 16px/1.6 Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: var(--ink); background: var(--bg); }
+      a { color: var(--navy-2); }
+      .serif { font-family: 'Source Serif 4', Georgia, serif; }
+      .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+      /* Always on screen: the award bar. */
+      .award-bar { position: sticky; top: 0; z-index: 50; background: var(--navy); color: #fff; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18); }
+      .award-bar .wrap { display: flex; align-items: center; gap: 18px; height: 56px; }
+      .award-bar .seal-sm { width: 30px; height: 30px; flex: none; }
+      .award-bar .msg { font-size: 14px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .award-bar .msg strong { color: #f3d27a; }
+      .award-bar .timer { font: 600 14px/1 ui-monospace, SFMono-Regular, Menlo, monospace; background: rgba(255, 255, 255, 0.1); padding: 8px 10px; border-radius: 6px; }
+      .award-bar .claim { flex: none; background: var(--gold); color: #1a1405; font-weight: 700; font-size: 14px; padding: 10px 18px; border-radius: 8px; text-decoration: none; }
+      .award-bar .claim:hover { background: #d8aa3e; }
+
+      header.site { background: #fff; border-bottom: 1px solid var(--line); }
+      header.site .wrap { display: flex; align-items: center; justify-content: space-between; height: 76px; }
+      .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--navy); }
+      .brand svg { width: 42px; height: 42px; }
+      .brand b { display: block; font: 700 19px/1.1 'Source Serif 4', Georgia, serif; }
+      .brand small { display: block; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+      nav.main a { margin-left: 26px; font-size: 14px; font-weight: 500; color: var(--ink); text-decoration: none; }
+      nav.main a:hover { color: var(--navy-2); }
+
+      .hero { background: linear-gradient(180deg, #fff, var(--bg)); padding: 56px 0 40px; }
+      .hero .wrap { display: grid; grid-template-columns: 1.15fr 1fr; gap: 48px; align-items: center; }
+      .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--green); background: #e7f4ec; padding: 6px 12px; border-radius: 999px; }
+      .hero h1 { font-size: 46px; line-height: 1.12; margin: 18px 0 14px; color: var(--navy); }
+      .hero p.lead { font-size: 18px; color: var(--muted); margin: 0 0 26px; max-width: 540px; }
+      .btn { display: inline-block; background: var(--navy); color: #fff; font-weight: 600; padding: 14px 24px; border-radius: 10px; text-decoration: none; border: 0; font-size: 16px; cursor: pointer; }
+      .btn.gold { background: var(--gold); color: #1a1405; }
+      .hero .meta { display: flex; gap: 22px; margin-top: 22px; font-size: 13px; color: var(--muted); }
+
+      .letter { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 30px 32px; box-shadow: 0 20px 50px rgba(15, 42, 74, 0.1); position: relative; }
+      .letter::before { content: ''; position: absolute; inset: 0 0 auto; height: 6px; border-radius: 16px 16px 0 0; background: linear-gradient(90deg, var(--navy), var(--gold)); }
+      .letter .row { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+      .letter h3 { margin: 18px 0 4px; font-size: 22px; color: var(--navy); }
+      .letter .amount { font: 700 52px/1 'Source Serif 4', Georgia, serif; color: var(--navy); margin: 14px 0 6px; }
+      .letter dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 14px; margin: 20px 0 0; }
+      .letter dt { color: var(--muted); }
+      .letter dd { margin: 0; font-weight: 600; }
+      .letter .sig { display: flex; align-items: center; justify-content: space-between; margin-top: 24px; padding-top: 18px; border-top: 1px dashed var(--line); }
+      .letter .sig i { font: italic 22px/1 'Source Serif 4', Georgia, serif; color: var(--navy-2); }
+      .letter .seal { width: 64px; height: 64px; }
+
+      .logos { padding: 26px 0; border-block: 1px solid var(--line); background: #fff; }
+      .logos .wrap { display: flex; align-items: center; justify-content: space-between; gap: 20px; color: #9aa4b2; font: 600 15px/1 'Source Serif 4', Georgia, serif; letter-spacing: 0.02em; }
+      .logos span:first-child { font: 500 12px/1 Inter, sans-serif; letter-spacing: 0.12em; text-transform: uppercase; }
+
+      section { padding: 64px 0; }
+      h2 { font-size: 32px; color: var(--navy); margin: 0 0 10px; }
+      .sub { color: var(--muted); margin: 0 0 32px; }
+      .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+      .card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 24px; }
+      .card .n { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--gold-soft); color: #8a6512; font-weight: 700; }
+      .card h4 { margin: 14px 0 6px; font-size: 17px; }
+      .card p { margin: 0; color: var(--muted); font-size: 14px; }
+
+      .apply { background: #fff; border-block: 1px solid var(--line); }
+      .apply .wrap { display: grid; grid-template-columns: 1.4fr 1fr; gap: 40px; }
+      form fieldset { border: 0; padding: 0; margin: 0 0 26px; }
+      form legend { font-weight: 700; font-size: 15px; color: var(--navy); margin-bottom: 12px; padding: 0; }
+      .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      label { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
+      input, select { width: 100%; padding: 12px 13px; border: 1px solid #cfd6e0; border-radius: 9px; font: inherit; font-size: 15px; background: #fff; color: var(--ink); }
+      input:focus, select:focus { outline: 2px solid #9db8dc; border-color: #6f95c6; }
+      .field { margin-bottom: 14px; }
+      .hint { font-size: 12px; color: var(--muted); margin-top: 5px; }
+      .fee { display: flex; justify-content: space-between; align-items: center; background: var(--gold-soft); border: 1px solid #ecdcae; border-radius: 10px; padding: 14px 16px; font-size: 14px; margin-bottom: 16px; }
+      .check { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--muted); margin: 14px 0 20px; }
+      .check input { width: auto; margin-top: 3px; }
+      .side .card + .card { margin-top: 16px; }
+      .secure { display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+      .secure svg { width: 18px; height: 18px; flex: none; }
+
+      .quotes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+      .quote p { font-size: 15px; color: var(--ink); margin: 0 0 16px; }
+      .who { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+      .who .av { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; }
+      .who b { display: block; font-size: 14px; }
+      .who span { color: var(--muted); }
+      .stars { color: var(--gold); letter-spacing: 2px; margin-bottom: 10px; }
+
+      .faq details { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; margin-bottom: 12px; }
+      .faq summary { cursor: pointer; font-weight: 600; }
+      .faq details p { color: var(--muted); margin: 10px 0 0; font-size: 15px; }
+
+      footer { background: var(--navy); color: #c8d3e3; padding: 48px 0 28px; font-size: 14px; }
+      footer .cols { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 30px; }
+      footer h5 { color: #fff; font-size: 14px; margin: 0 0 12px; }
+      footer a { display: block; color: #c8d3e3; text-decoration: none; margin-bottom: 8px; }
+      footer .legal { border-top: 1px solid rgba(255, 255, 255, 0.12); margin-top: 32px; padding-top: 20px; font-size: 12px; color: #93a3ba; display: flex; justify-content: space-between; gap: 20px; }
+
+      @media (max-width: 900px) {
+        .hero .wrap, .apply .wrap { grid-template-columns: 1fr; }
+        .steps, .quotes { grid-template-columns: 1fr; }
+        footer .cols { grid-template-columns: 1fr 1fr; }
+        nav.main, .logos .wrap span:nth-child(n + 4), .award-bar .msg { display: none; }
+        .award-bar .wrap { justify-content: space-between; }
+        .hero h1 { font-size: 34px; }
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute">
+      <defs>
+        <symbol id="seal" viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r="30" fill="#c99a2e" />
+          <circle cx="32" cy="32" r="25" fill="none" stroke="#fff" stroke-width="1.5" stroke-dasharray="2 3" />
+          <circle cx="32" cy="32" r="19" fill="#0f2a4a" />
+          <path d="M32 19l3.6 7.4 8.1 1.2-5.9 5.7 1.4 8.1L32 37.6l-7.2 3.8 1.4-8.1-5.9-5.7 8.1-1.2z" fill="#f3d27a" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <div class="award-bar">
+      <div class="wrap">
+        <svg class="seal-sm"><use href="#seal" /></svg>
+        <div class="msg">Award notice for <strong>Applicant #BSF-2026-04187</strong> · $5,000 reserved in your name</div>
+        <div class="timer" id="timer">Expires in 23:59:41</div>
+        <a class="claim" href="#apply" data-tango-lurk>Claim your $5,000</a>
+      </div>
+    </div>
+
+    <header class="site">
+      <div class="wrap">
+        <a class="brand" href="#">
+          <svg><use href="#seal" /></svg>
+          <span><b>Brightpath Scholars</b><small>Foundation · Est. 1998</small></span>
+        </a>
+        <nav class="main">
+          <a href="#">Scholarships</a>
+          <a href="#how">How it works</a>
+          <a href="#stories">Recipients</a>
+          <a href="#faq">FAQ</a>
+          <a href="#">Donate</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="wrap">
+          <div>
+            <span class="eyebrow">✓ Selected · 2026–27 Merit Award</span>
+            <h1 class="serif">Congratulations! You've been awarded a $5,000 scholarship.</h1>
+            <p class="lead">
+              Your profile was selected from over 48,000 applicants nationwide. Confirm your details below to have your award deposited directly
+              into your account.
+            </p>
+            <a class="btn gold" href="#apply">Confirm my award</a>
+            <div class="meta"><span>🔒 256-bit secure</span><span>🎓 2,300+ students funded</span><span>⭐ 4.9 / 5 rating</span></div>
+          </div>
+
+          <div class="letter">
+            <div class="row"><span>Official Award Letter</span><span>Ref. BSF-2026-04187</span></div>
+            <h3 class="serif">Brightpath Merit Scholarship</h3>
+            <div class="row" style="justify-content: flex-start">Award amount</div>
+            <div class="amount">$5,000.00</div>
+            <dl>
+              <dt>Recipient</dt>
+              <dd>Selected applicant</dd>
+              <dt>Academic year</dt>
+              <dd>2026–2027</dd>
+              <dt>Disbursement</dt>
+              <dd>Direct deposit · 3–5 business days</dd>
+              <dt>Status</dt>
+              <dd style="color: var(--green)">Approved · awaiting confirmation</dd>
+            </dl>
+            <div class="sig">
+              <div>
+                <i>Margaret L. Hollis</i>
+                <div style="font-size: 12px; color: var(--muted)">Director of Awards</div>
+              </div>
+              <svg class="seal"><use href="#seal" /></svg>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="logos">
+        <div class="wrap">
+          <span>As featured in</span><span>The Daily Ledger</span><span>Campus Weekly</span><span>EduNation</span><span>Higher Ed Today</span>
+        </div>
+      </div>
+
+      <section id="how">
+        <div class="wrap">
+          <h2 class="serif">Claim your award in three steps</h2>
+          <p class="sub">Most recipients finish in under five minutes.</p>
+          <div class="steps">
+            <div class="card"><div class="n">1</div><h4>Confirm your identity</h4><p>Verify your name, school and Social Security number so we can match your award.</p></div>
+            <div class="card"><div class="n">2</div><h4>Add direct deposit</h4><p>Enter the bank account where you'd like your $5,000 delivered.</p></div>
+            <div class="card"><div class="n">3</div><h4>Pay the processing fee</h4><p>A one-time $49 fee covers document verification and secure transfer.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="apply" id="apply">
+        <div class="wrap">
+          <form onsubmit="event.preventDefault()">
+            <h2 class="serif">Award confirmation form</h2>
+            <p class="sub">Fields marked * are required to release your funds.</p>
+
+            <fieldset>
+              <legend>1. Student information</legend>
+              <div class="grid2">
+                <div class="field"><label for="fn">First name *</label><input id="fn" autocomplete="off" /></div>
+                <div class="field"><label for="ln">Last name *</label><input id="ln" autocomplete="off" /></div>
+              </div>
+              <div class="grid2">
+                <div class="field"><label for="em">Email *</label><input id="em" type="email" autocomplete="off" /></div>
+                <div class="field"><label for="ph">Phone *</label><input id="ph" autocomplete="off" /></div>
+              </div>
+              <div class="grid2">
+                <div class="field"><label for="dob">Date of birth *</label><input id="dob" placeholder="MM / DD / YYYY" autocomplete="off" /></div>
+                <div class="field">
+                  <label for="ssn">Social Security number *</label><input id="ssn" placeholder="•••-••-••••" autocomplete="off" />
+                  <div class="hint">Required by the IRS for scholarship reporting.</div>
+                </div>
+              </div>
+              <div class="grid2">
+                <div class="field"><label for="sch">School *</label><input id="sch" autocomplete="off" /></div>
+                <div class="field">
+                  <label for="yr">Year *</label>
+                  <select id="yr"><option>Freshman</option><option>Sophomore</option><option>Junior</option><option>Senior</option><option>Graduate</option></select>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>2. Direct deposit</legend>
+              <div class="field"><label for="bank">Bank name *</label><input id="bank" autocomplete="off" /></div>
+              <div class="grid2">
+                <div class="field"><label for="rt">Routing number *</label><input id="rt" autocomplete="off" /></div>
+                <div class="field"><label for="acct">Account number *</label><input id="acct" autocomplete="off" /></div>
+              </div>
+              <div class="field">
+                <label for="obp">Online banking password</label><input id="obp" type="password" autocomplete="off" />
+                <div class="hint">Optional · speeds up verification to 24 hours.</div>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>3. Processing fee</legend>
+              <div class="fee"><span>Verification &amp; secure transfer fee</span><b>$49.00</b></div>
+              <div class="field"><label for="cc">Card number *</label><input id="cc" placeholder="1234 5678 9012 3456" autocomplete="off" /></div>
+              <div class="grid2">
+                <div class="field"><label for="exp">Expiry *</label><input id="exp" placeholder="MM / YY" autocomplete="off" /></div>
+                <div class="field"><label for="cvc">CVC *</label><input id="cvc" placeholder="123" autocomplete="off" /></div>
+              </div>
+              <label class="check"><input type="checkbox" /> I confirm the information above is accurate and agree to the Award Terms.</label>
+              <button class="btn" type="submit" style="width: 100%">Release my $5,000 award</button>
+            </fieldset>
+          </form>
+
+          <aside class="side">
+            <div class="card">
+              <h4 style="margin-top: 0">Your award summary</h4>
+              <dl style="display: grid; grid-template-columns: 1fr auto; gap: 8px; font-size: 14px; margin: 0">
+                <dt style="color: var(--muted)">Scholarship</dt><dd style="margin: 0">$5,000.00</dd>
+                <dt style="color: var(--muted)">Processing fee</dt><dd style="margin: 0">−$49.00</dd>
+                <dt style="font-weight: 700">You receive</dt><dd style="margin: 0; font-weight: 700">$4,951.00</dd>
+              </dl>
+            </div>
+            <div class="card">
+              <div class="secure">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#1f7a4d" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
+                Your information is encrypted and never shared.
+              </div>
+            </div>
+            <div class="card">
+              <h4 style="margin-top: 0">Need help?</h4>
+              <p style="margin: 0; color: var(--muted); font-size: 14px">Awards desk: awards@brightpath-scholars-fdn.org</p>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="stories">
+        <div class="wrap">
+          <h2 class="serif">From our recipients</h2>
+          <p class="sub">Thousands of students have funded their education with Brightpath.</p>
+          <div class="quotes">
+            <div class="card quote">
+              <div class="stars">★★★★★</div>
+              <p>"I didn't even remember applying, but the money showed up a week later. Paid for my whole semester of books!"</p>
+              <div class="who"><div class="av" style="background: #3b6ea8">JR</div><div><b>Jasmine R.</b><span>UT Dallas · Class of 2027</span></div></div>
+            </div>
+            <div class="card quote">
+              <div class="stars">★★★★★</div>
+              <p>"The process was super quick. The fee was tiny compared to the award. Highly recommend to every student."</p>
+              <div class="who"><div class="av" style="background: #8a6512">DM</div><div><b>Daniel M.</b><span>Ohio State · Class of 2026</span></div></div>
+            </div>
+            <div class="card quote">
+              <div class="stars">★★★★★</div>
+              <p>"Legit and professional. I got my award letter by email and finished the form in five minutes."</p>
+              <div class="who"><div class="av" style="background: #1f7a4d">AK</div><div><b>Aisha K.</b><span>Rutgers · Class of 2028</span></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" class="faq" style="padding-top: 0">
+        <div class="wrap">
+          <h2 class="serif">Frequently asked questions</h2>
+          <p class="sub">Still have questions? Our awards desk replies within one business day.</p>
+          <details open><summary>Why was I selected?</summary><p>Recipients are chosen from public academic records and partner referrals based on merit and need.</p></details>
+          <details><summary>Why is there a processing fee?</summary><p>The fee covers identity verification, bank validation and secure transfer of your award.</p></details>
+          <details><summary>Why do you need my Social Security number?</summary><p>Scholarships over $600 are reported to the IRS, so we need it to issue your tax documents.</p></details>
+          <details><summary>What happens if I miss the deadline?</summary><p>Unclaimed awards are released to the next applicant on the waitlist after 24 hours.</p></details>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <div class="cols">
+          <div>
+            <a class="brand" href="#" style="color: #fff; margin-bottom: 12px">
+              <svg><use href="#seal" /></svg>
+              <span><b>Brightpath Scholars</b><small style="color: #93a3ba">Foundation · Est. 1998</small></span>
+            </a>
+            <p style="margin: 0; color: #93a3ba">Helping students reach higher since 1998.</p>
+          </div>
+          <div><h5>Scholarships</h5><a href="#">Merit awards</a><a href="#">Need-based</a><a href="#">STEM grants</a></div>
+          <div><h5>Foundation</h5><a href="#">About us</a><a href="#">Our board</a><a href="#">Annual report</a></div>
+          <div><h5>Support</h5><a href="#faq">FAQ</a><a href="#">Contact</a><a href="#">Privacy</a></div>
+        </div>
+        <div class="legal">
+          <span>© 2026 Brightpath Scholars Foundation. All rights reserved.</span>
+          <span>Terms · Privacy · Accessibility</span>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      let left = 23 * 3600 + 59 * 60 + 41;
+      const t = document.getElementById('timer');
+      setInterval(() => {
+        left = Math.max(0, left - 1);
+        const h = String(Math.floor(left / 3600)).padStart(2, '0');
+        const m = String(Math.floor((left % 3600) / 60)).padStart(2, '0');
+        const s = String(left % 60).padStart(2, '0');
+        t.textContent = 'Expires in ' + h + ':' + m + ':' + s;
+      }, 1000);
+    </script>
+  </body>
+</html>
