@@ -43,8 +43,8 @@ async function listingsEnabled(site: string) {
 const BADGE: Record<RiskLevel | 'checking', { text: string; color: string }> = {
   checking: { text: '…', color: '#8A8A8A' },
   none: { text: '✓', color: '#1E8E4F' },
-  low: { text: '!', color: '#D9A400' },
-  medium: { text: '!', color: '#EF7D00' },
+  low: { text: '!', color: '#1E8E4F' },
+  medium: { text: '!', color: '#D9A400' },
   high: { text: '!!', color: '#D2232A' },
 };
 async function setBadge(tabId: number, kind: keyof typeof BADGE | null, listingCount = 0) {

@@ -84,8 +84,8 @@
   white-space: nowrap;
 }
 .pg-pill-high { background: #fde7e8; color: #b42318; }
-.pg-pill-medium { background: #fff1e0; color: #b45309; }
-.pg-pill-low { background: #fff8d6; color: #8a6d00; }
+.pg-pill-medium { background: #fff8d6; color: #8a6d00; }
+.pg-pill-low { background: #e5f6ec; color: #17733d; }
 .pg-pill-none { background: #e5f6ec; color: #17733d; }
 .pg-sev {
   flex: none;

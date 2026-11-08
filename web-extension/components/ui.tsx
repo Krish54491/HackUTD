@@ -6,16 +6,19 @@ export const LEVEL_LABEL: Record<RiskLevel, string> = { none: 'None', low: 'Low'
 export type Mood = 'happy' | 'suspicious' | 'angry';
 export function moodFor(level: RiskLevel | null | undefined): Mood {
   if (level === 'high') return 'angry';
-  if (level === 'medium' || level === 'low') return 'suspicious';
+  if (level === 'medium') return 'suspicious';
   return 'happy';
 }
 
-/** Light-mode character, with existing warning expressions for elevated risk. */
+/** The same light-mode asset family is used in page reports and toolbar popups. */
+const CHARACTER_ASSET: Record<Mood, string> = {
+  happy: 'light-mode.png',
+  suspicious: 'light-mode-suspicious.png',
+  angry: 'light-mode-angry.png',
+};
 export function Character({ mood, size = 120 }: { mood: Mood; size?: number }) {
-  // getURL's typing only knows files WXT has seen; characters live in /public.
-  const src = (browser.runtime.getURL as (p: string) => string)(`/characters/${mood === 'happy' ? 'light-mode' : mood}.png`);
-  if (mood === 'happy') return <span className="pg-character-frame" style={{ width: size, height: size }}><img src={src} width={size} height={size} alt="" draggable={false}/></span>;
-  return <img className="pg-character" src={src} width={size} height={size} alt="" draggable={false} />;
+  const src = (browser.runtime.getURL as (p: string) => string)(`/characters/${CHARACTER_ASSET[mood]}`);
+  return <span className="pg-character-frame" style={{ width: size, height: size }}><img src={src} width={size} height={size} alt="" draggable={false}/></span>;
 }
 
 export function Logo() {
