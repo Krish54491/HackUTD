@@ -110,7 +110,7 @@ fun WarningAnimationScreen(message: MessageRecord, risk: MessageRisk, review: ()
         Text(phase, color = if (dim > .5f) Color.White else Ink, style = MaterialTheme.typography.titleLarge)
         WarningStage(elapsed, high, Modifier.fillMaxWidth().heightIn(min = 250.dp, max = 340.dp).aspectRatio(390f / 340f))
         if (!finished) {
-            Surface(color = Color.White.copy(alpha = .94f), shape = MaterialTheme.shapes.large) {
+            Surface(color = MaterialTheme.colorScheme.surface.copy(alpha = .94f), shape = MaterialTheme.shapes.large) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(message.title, style = MaterialTheme.typography.titleMedium)
                     Body(if (message.isDemo) "This animation uses a fictional message. No real message or link is being changed." else "Local checks flagged this notification preview. The original message remains in your messaging inbox.")

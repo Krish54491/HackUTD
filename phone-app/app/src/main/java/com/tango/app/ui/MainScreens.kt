@@ -118,7 +118,7 @@ fun HistoryScreen(records: List<MessageRecord>, review: (String) -> Unit) {
         }
     }
     records.filtered(filter).forEach { message ->
-        Surface(onClick = { review(message.id) }, shape = MaterialTheme.shapes.large, color = androidx.compose.ui.graphics.Color.White) {
+        Surface(onClick = { review(message.id) }, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                     Badge(if (message.corrected) "Corrected" else "Flagged", if (message.corrected) Green else Amber, if (message.corrected) GreenTint else AmberTint)
@@ -145,6 +145,22 @@ fun HistoryScreen(records: List<MessageRecord>, review: (String) -> Unit) {
 fun SettingsScreen(alerts: Boolean, access: Boolean, demo: Boolean, openAccess: () -> Unit,
                    requestAlerts: () -> Unit, vpn: () -> Unit, reset: () -> Unit, showReal: (() -> Unit)? = null, clearHistory: (() -> Unit)? = null) {
     Heading("Your choices", "Privacy & protection")
+    val theme = LocalThemePreference.current
+    Panel {
+        Text("Appearance", style = MaterialTheme.typography.titleMedium)
+        Body("Choose a theme, or follow your phone’s display setting.")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ThemeMode.entries.forEach { option ->
+                FilterChip(
+                    selected = theme.mode == option,
+                    onClick = { theme.select(option) },
+                    label = { Text(option.label) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = PinkTint, selectedLabelColor = Pink),
+                )
+            }
+        }
+    }
     Panel {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Notification access", style = MaterialTheme.typography.titleMedium)

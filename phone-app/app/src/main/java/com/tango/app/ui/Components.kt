@@ -45,7 +45,7 @@ fun Heading(eyebrow: String, title: String, subtitle: String? = null) {
 }
 
 @Composable
-fun Panel(color: Color = Color.White, content: @Composable ColumnScope.() -> Unit) {
+fun Panel(color: Color = MaterialTheme.colorScheme.surface, content: @Composable ColumnScope.() -> Unit) {
     Surface(shape = RoundedCornerShape(22.dp), color = color, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
     }
@@ -74,7 +74,7 @@ fun PrimaryButton(text: String, icon: ImageVector? = null, enabled: Boolean = tr
 @Composable
 fun SecondaryButton(text: String, icon: ImageVector? = null, onClick: () -> Unit) {
     OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
-        colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
+        colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surface),
         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp)) {
         icon?.let { Icon(it, null, Modifier.size(19.dp)); Spacer(Modifier.width(10.dp)) }
         Text(text)
@@ -100,7 +100,7 @@ fun StatusRow(icon: ImageVector, title: String, subtitle: String, status: String
 
 @Composable
 fun HornetsCard(count: Int, period: String = "NOVEMBER SO FAR", detail: String = "Unique attempts interrupted. Each counts once.") {
-    Panel(Ink) {
+    Panel(Color(0xFF18121F)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(period, color = Color(0xFFBBBBCA), fontSize = 11.sp)
             CharacterAvatar(36)
