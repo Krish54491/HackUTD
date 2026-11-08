@@ -1,37 +1,142 @@
-App: Protego (for now)
-Android application (Android Studio)
+# Protego - Phone App
 
-The goal of this application is to prevent scam texts from reaching people's phones. The primary function isn't in the app screen / UI itself; it's in its background functionality.
+## Important
 
-Example (without app):
+- Android application developed with Android Studio.
+- Backend functions should be shared with the web extension and website, with the majority of the backend built on Spacetime.
+- The screens below are design mockups for the planned app.
+- Keep the gray circles as placeholders for now.
+- The primary protection happens in the background. The app screens explain warnings, show protection history, and manage permissions.
+- Hiding a notification does not delete the SMS or RCS message. The original message remains in the user's messaging inbox.
+- Demo findings must be labeled as simulated. An unavailable check is not evidence of a threat.
 
-- Scam company sends user a text
-- User clicks on link in text
-- User gets scammed
+## General
 
-With app:
+Protego checks incoming messaging notifications for signs of scams and warns users before they respond or open suspicious links. Optional local VPN filtering adds another layer of protection against known-bad domains.
 
-- Scam company sends user a text
-- Protego sees the text, and runs scam checks on it
-- If deemed a scam, Protego will delete the message and send a notification "Scam message blocked! Check it out here"
-- User can click it and see the message, why it was flagged, and it will send the scam to the hornet's nest via Spacetime.
+The main navigation includes Home, History, and Settings. Selecting a flagged message opens its review screen, with options to see why it was flagged, share redacted threat indicators, or mark it as not a scam.
 
-Notes:
+Example flow:
 
-If it's not possible to delete the text, it should do anything to have it not affect the user's view / alert them that this message is scammy before the user clicks on it. Figure this out.
+- A suspicious text arrives and Protego checks the content available in its notification.
+- If it looks like a scam, Protego hides the original notification and posts its own warning.
+- The user taps Review message to inspect the notification preview and the warning signs.
+- Optional domain filtering can block a request to a known-bad domain.
+- The user can review an explanation, correct the flag, or choose to share threat indicators with the Hornet's Nest via Spacetime.
 
-Solution:
-Notification + Warn: Can read incoming message notifications (SMS and RCS) and dismiss them, but the message stays in the inbox.
-Use a NotificationListenerService. When a message arrives, scan it. If it’s a scam, call cancelNotification() to hide the original alert and post your own high-priority “Scam message blocked!” notification, warning the user before they click. Use DNS filtering via VpnService: a local VPN that blocks known-bad domains, so the link won’t load even if tapped.
+## Protection Setup
 
-Figure out how to check whether its a scam or not using your own intelligence.
-Solution:
-Heuristics (free, instant): urgency words (“act now,” “account suspended”), shortened URLs (bit.ly), lookalike domains (paypa1-secure.com), unknown sender, odd short codes, and requests for gift cards, crypto, or payment.
+Shows the permissions needed for protection and whether each is ready:
 
-URL reputation: Google Safe Browsing API (free tier), URLhaus, PhishTank, or VirusTotal. You can also check domain age via RDAP, since brand-new domains are a big red flag.
+- Show Protego alerts: allows the app to display warning notifications.
+- Notification access: allows Protego to inspect messaging notifications. Explain that Android notification access may expose sender names, message previews, and personal details.
+- Malicious-link protection: optional local VPN setup for filtering known-bad domains.
 
-LLM classification: send the message (and the URL findings) to the Claude API with a prompt asking for JSON like {"is_scam": true, "confidence": 0.92, "category": "package delivery", "reasons": [...]}. The reasons field powers your “why it was flagged” screen. Only call it when the heuristics are inconclusive, to save cost.
+Show a required-permission readiness count and an inactive state until the required permissions are ready. Open notification access takes the user to Android's notification-access settings. Set up local VPN starts the optional VPN setup. Set up later lets the user continue without implying that protection is active.
 
-Privacy note: you’d be sending message text to a server. Mention that in your privacy policy, or redact phone numbers and names first. Gemini Nano or ML Kit are on-device options if you want it fully private.
+## Home / Protection Active
 
-When explaining why its a scam, assume the user is a T-Mobole user, and show "Since you're a T-Mobile user, here are some services you have access to so you can prevent this later: ..."
+Shows the current state of notification monitoring and optional suspicious-domain filtering. Distinguish active, missing-permission, and disconnected states.
+
+- Display hornets defeated for the current period.
+- Count each unique scam attempt once. A warning and a later domain block for the same attempt do not count twice.
+- Show recent flagged messages with their title, domain, and time.
+- Selecting a recent message opens its review screen.
+- View all opens protection history.
+
+![Protego protection setup and active Home screen with permission status, hornets defeated, and recent flagged messages](image/Phone-App/protection-setup-and-home.png)
+
+## Background Protection / Warning Notification
+
+The planned notification flow uses NotificationListenerService to inspect incoming SMS and RCS notification previews. When a message is flagged, use cancelNotification() to hide the original alert and post a Protego warning with a Review message action.
+
+The warning should say that a suspected scam was detected and explain that the original alert was hidden while the message remains in the inbox. Avoid saying that the message itself was blocked or deleted.
+
+Optional DNS filtering through VpnService uses a local VPN to filter known-bad domains. Show its actual connection state and the ongoing protection notification when running. This adds protection but cannot block every threat.
+
+## Flagged Message Review
+
+Shows the suspected scam and the content captured from its notification preview:
+
+- Warning summary and time checked.
+- Message type, sender, and received time.
+- Available message preview, with suspicious URLs neutralized and non-clickable inside Protego.
+- Reason tags such as urgency, unexpected fee, and lookalike link.
+- A reminder that the original message is still in the messaging inbox.
+
+Why it was flagged opens the explanation screen. Share threat opens a sharing preview rather than immediately uploading data. Mark as not a scam records a correction and removes the Protego flag without changing the original message.
+
+![Protego Android warning notification and flagged-message review with a disabled link, warning tags, and review actions](image/Phone-App/notification-and-message-review.png)
+
+## Scam Detection / Why It Was Flagged
+
+Use cheap checks first and AI only when needed:
+
+- Heuristics: urgency words such as “act now” or “account suspended,” shortened URLs, lookalike domains such as paypa1-secure.com, unfamiliar senders, odd short codes, and requests for gift cards, cryptocurrency, or payment. Treat these as indicators rather than proof.
+- URL reputation: planned integrations include Google Safe Browsing, URLhaus, PhishTank, or VirusTotal. Domain-age checks through RDAP can provide additional context when available.
+- LLM classification: when local checks are inconclusive and cloud analysis is enabled with consent, send the message and URL findings to the Claude API for a structured classification. The reasons field powers the explanation screen.
+
+Example classification response:
+
+```json
+{
+  "is_scam": true,
+  "confidence": 0.92,
+  "category": "package delivery",
+  "reasons": ["Unexpected payment request", "Lookalike domain"]
+}
+```
+
+Explain the specific clues in plain language, including pressure to act quickly, an unexpected fee, or a misleading domain. Show URL-check findings separately from language indicators. Label a simulated reputation hit as a demo result, an unavailable domain-age lookup as unavailable, and a classifier that did not run as not run. Local checks should remain usable when cloud analysis is off.
+
+Include a practical next step, such as checking a delivery through the retailer's official app or contacting the company using trusted details instead of replying through the suspicious message.
+
+## T-Mobile Services
+
+The explanation screen assumes a T-Mobile user and includes a section such as: “Since you're a T-Mobile user, here are services that can help.”
+
+The mockup includes Scam Shield, Scam ID, and Scam Block, with a link to T-Mobile's official guide. Explain their role as additional call protection and keep it separate from Protego's message analysis. These services should not be described as deleting SMS messages or resolving the flagged text. Availability and eligibility may vary.
+
+## Protection History / Hornets Defeated
+
+Shows Protego's review records, including warnings, domain blocks, and user corrections. These are app records; the original messages remain in the messaging app.
+
+- Show the total hornets defeated and the selected period.
+- Include reviewed, flagged, and corrected counts.
+- Support All, Flagged, and Corrected filters.
+- Each record includes a status, time, title, domain when present, scam category, and action taken.
+- Group related actions under one attempt, such as a warning followed by a domain block, and count that attempt once.
+- Corrected records explain that the user marked the message as not a scam, the Protego flag was removed, and protection remains active.
+
+## Share to Hornet's Nest
+
+Sharing is optional and requires confirmation for each threat. The preview shows exactly what will be shared through Spacetime:
+
+- Suspicious domain.
+- Scam category.
+- Reason tags.
+
+Redact the sender, remove names and other personal details, and exclude raw message text by default. Confirm & share threat sends only the previewed indicators. Cancel returns without sharing. Confirming one threat does not enable automatic sharing for future messages.
+
+Sharing consent is separate from cloud-analysis consent. Sharing adds no extra hornet to the user's total and does not change the original SMS.
+
+## Privacy & Protection Settings
+
+Shows notification access, Protego warning-alert permission, and Hornet's Nest sharing preferences.
+
+- Manage notification access opens the corresponding Android settings.
+- Manage Android alerts opens the app's notification settings.
+- Show the real permission states rather than a fixed active label.
+- Hornet's Nest sharing defaults to Ask each time, with a reminder to review redacted indicators before sharing.
+- Explain that cloud classification sends message content to a server. Obtain separate consent and redact personal details before transmission. On-device analysis is a possible future alternative.
+
+![Protego explanation and T-Mobile service recommendations, protection history, redacted Hornet's Nest sharing preview, and privacy settings](image/Phone-App/explanation-history-sharing-and-settings.png)
+
+## Frontend / Non-Functional extras
+
+- Match the mockups' pink accents, light backgrounds, rounded white cards, and dark hornets-defeated summary cards.
+- Keep gray logo and character circles as placeholders.
+- Use green for active protection and corrected records, and amber for suspected-scam warnings.
+- Keep suspicious links non-clickable in Protego's review screens.
+- Highlight the current Home, History, or Settings tab in the bottom navigation.
+- Detail screens provide a back action to the previous screen.
