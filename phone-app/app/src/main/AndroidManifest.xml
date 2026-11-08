@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <queries>
+        <intent><action android:name="android.provider.Telephony.SMS_DELIVER" /></intent>
+    </queries>
     <application android:allowBackup="false" android:label="Tango" android:icon="@drawable/ic_tango" android:theme="@style/Theme.Tango" android:supportsRtl="true">
         <activity android:name=".MainActivity" android:launchMode="singleTop" android:exported="true">
             <intent-filter>

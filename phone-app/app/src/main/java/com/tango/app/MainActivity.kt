@@ -7,6 +7,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -28,19 +29,20 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        WarningNotifications.ensureChannel(this)
         if (savedInstanceState == null) openReview = intent.getStringExtra("review")
         setContent {
             TangoTheme {
                 val context = LocalContext.current
                 val lifecycle = LocalLifecycleOwner.current
                 val manager = context.getSystemService(NotificationManager::class.java)
-                var alerts by remember { mutableStateOf(manager.areNotificationsEnabled()) }
+                var alerts by remember { mutableStateOf(WarningNotifications.canPost(context)) }
                 var access by remember { mutableStateOf(manager.isNotificationListenerAccessGranted(ComponentName(context, ProtectionAccessService::class.java))) }
-                val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { alerts = manager.areNotificationsEnabled() }
+                val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { alerts = WarningNotifications.canPost(context) }
                 DisposableEffect(lifecycle) {
                     val observer = LifecycleEventObserver { _, event ->
                         if (event == Lifecycle.Event.ON_RESUME) {
-                            alerts = manager.areNotificationsEnabled()
+                            alerts = WarningNotifications.canPost(context)
                             access = manager.isNotificationListenerAccessGranted(ComponentName(context, ProtectionAccessService::class.java))
                         }
                     }
@@ -51,7 +53,7 @@ class MainActivity : ComponentActivity() {
                     alertsAllowed = alerts, notificationAccess = access,
                     openReview = openReview, consumeReview = { openReview = null },
                     requestAlerts = {
-                        if (Build.VERSION.SDK_INT >= 33 && !alerts) launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
                         else startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
                     },
                     openNotificationAccess = { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
