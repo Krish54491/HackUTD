@@ -44,7 +44,7 @@ Shows the current state of notification monitoring and optional suspicious-domai
 - Selecting a recent message opens its review screen.
 - View all opens protection history.
 
-![Protego protection setup and active Home screen with permission status, hornets defeated, and recent flagged messages](image/Phone-App/protection-setup-and-home.png)
+![Protego protection setup and active Home screen with permission status, hornets defeated, and recent flagged messages](protection-setup-and-home.png)
 
 ## Background Protection / Warning Notification
 
@@ -66,7 +66,7 @@ Shows the suspected scam and the content captured from its notification preview:
 
 Why it was flagged opens the explanation screen. Share threat opens a sharing preview rather than immediately uploading data. Mark as not a scam records a correction and removes the Protego flag without changing the original message.
 
-![Protego Android warning notification and flagged-message review with a disabled link, warning tags, and review actions](image/Phone-App/notification-and-message-review.png)
+![Protego Android warning notification and flagged-message review with a disabled link, warning tags, and review actions](notification-and-message-review.png)
 
 ## Scam Detection / Why It Was Flagged
 
@@ -130,7 +130,7 @@ Shows notification access, Protego warning-alert permission, and Hornet's Nest s
 - Hornet's Nest sharing defaults to Ask each time, with a reminder to review redacted indicators before sharing.
 - Explain that cloud classification sends message content to a server. Obtain separate consent and redact personal details before transmission. On-device analysis is a possible future alternative.
 
-![Protego explanation and T-Mobile service recommendations, protection history, redacted Hornet's Nest sharing preview, and privacy settings](image/Phone-App/explanation-history-sharing-and-settings.png)
+![Protego explanation and T-Mobile service recommendations, protection history, redacted Hornet's Nest sharing preview, and privacy settings](explanation-history-sharing-and-settings.png)
 
 ## Frontend / Non-Functional extras
 
