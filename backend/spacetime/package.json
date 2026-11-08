@@ -1,0 +1,22 @@
+{
+  "name": "protego-spacetime",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc",
+    "test": "vitest run",
+    "publish:cloud": "spacetime publish --server maincloud protego",
+    "publish:local": "spacetime publish --server local protego"
+  },
+  "dependencies": {
+    "scripts": "^0.1.0",
+    "spacetimedb": "2.14.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}
