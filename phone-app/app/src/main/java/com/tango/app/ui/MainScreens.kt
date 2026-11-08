@@ -18,13 +18,13 @@ fun SetupScreen(alerts: Boolean, access: Boolean, requestAlerts: () -> Unit, ope
     Heading("Protection setup", "A second look.\nBefore you tap.")
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text("${listOf(alerts, access).count { it }} of 2 required permissions ready", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-        Body("Not active yet")
+        Body(if (alerts && access) "Permissions ready" else "Not active yet")
     }
     PermissionCard(AppIcons.NotificationsActive, "Show Tango alerts", if (alerts) "Allowed" else "Needed", alerts,
         "Warnings can appear when a message looks suspicious. ${if (alerts) "You’ve allowed this permission." else "Allow Tango to show warning notifications."}",
         if (alerts) "Manage Android alerts ↗" else "Allow warning alerts ↗", requestAlerts)
     PermissionCard(AppIcons.ChatBubbleOutline, "Notification access", if (access) "Allowed" else "Needed", access,
-        "Android grants access to notifications, which may include sender names, message previews and personal details. This frontend does not read real messages.",
+        "Android grants access to notifications, which may include sender names, message previews and personal details. Tango checks only previews Android makes available and saves flagged previews locally.",
         "Manage notification access ↗", openAccess)
     PermissionCard(AppIcons.Shield, "Malicious-link protection", "Optional", false,
         "Use a local VPN to filter known-bad domains. It adds a layer of protection, but cannot block every threat. VPN integration is not connected in this frontend.",
@@ -52,19 +52,23 @@ private fun PermissionCard(icon: ImageVector, title: String, status: String, act
 
 @Composable
 fun HomeScreen(records: List<MessageRecord>, demo: Boolean, alerts: Boolean, access: Boolean,
-               review: (String) -> Unit, history: () -> Unit, setup: () -> Unit, demoNotification: () -> Unit, previewWarning: ((MessageRisk) -> Unit)? = null) {
+               review: (String) -> Unit, history: () -> Unit, setup: () -> Unit, demoNotification: () -> Unit, previewWarning: ((MessageRisk) -> Unit)? = null,
+               monitoringConnected: Boolean = false, monitoringError: String? = null, showReal: (() -> Unit)? = null) {
     Heading("Your protection", if (demo) "On guard. In the\nbackground." else "Your protection,\nat a glance.")
-    Badge("Demo messages · simulated findings", Pink, PinkTint)
+    Badge(if (demo) "Demo messages · simulated findings" else "Real messages · on-device checks", Pink, PinkTint)
+    if (monitoringError != null) Panel(AmberTint) { Body(monitoringError, Amber) }
+    if (demo && showReal != null) SecondaryButton("Show real messages", onClick = showReal)
     Panel {
         StatusRow(AppIcons.NotificationsActive, "Notification monitoring",
-            if (demo) "Simulated access & warning alerts" else if (!access || !alerts) "Required permissions missing" else "Permissions ready · scanner not connected",
-            if (demo) "Demo" else if (!access || !alerts) "Needed" else "Inactive", demo)
+            if (demo) "Simulated access & warning alerts" else if (!access) "Notification access needed" else if (!monitoringConnected) "Waiting for Android to connect" else if (!alerts) "Connected · warning alerts unavailable" else "Local notification checks running",
+            if (demo) "Demo" else if (!access || !alerts) "Needed" else if (monitoringConnected) "Active" else "Waiting", demo || (access && alerts && monitoringConnected))
         StatusRow(AppIcons.Shield, "Suspicious-domain filtering",
             if (demo) "Simulated local VPN connection" else "Local VPN not connected",
             if (demo) "Demo" else "Off", demo)
     }
     if (!demo) TextAction("Review protection setup →", setup)
-    HornetsCard(records.hornetsDefeated(), detail = "Demo attempts interrupted. Each counts once.")
+    HornetsCard(records.hornetsDefeated(), period = if (demo) "DEMO · NOVEMBER SO FAR" else "SAVED HISTORY · ON THIS PHONE",
+        detail = if (demo) "Demo attempts interrupted. Each counts once." else "Saved, unique warned attempts. Each counts once.")
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text("Recent flagged messages", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
         TextAction("View all", history)
@@ -93,7 +97,8 @@ fun HomeScreen(records: List<MessageRecord>, demo: Boolean, alerts: Boolean, acc
         SecondaryButton("Preview high-risk animation") { previewWarning(MessageRisk.HIGH) }
     }
 
-    Body("Fictional messages only. Real message scanning and VPN filtering are not running.")
+    Body(if (demo) "Fictional records are shown here. Real monitoring, when enabled, continues independently; choose Show real messages to see its records."
+        else "Only flagged notification previews are saved on this phone. The app never deletes SMS/RCS. VPN filtering is not connected.")
 }
 
 @Composable
@@ -101,8 +106,9 @@ fun HistoryScreen(records: List<MessageRecord>, review: (String) -> Unit) {
     var filterName by rememberSaveable { mutableStateOf(HistoryFilter.All.name) }
     val filter = HistoryFilter.valueOf(filterName)
     val flagged = records.count { !it.corrected }
-    Heading("Your activity", "Protection history", "A clear record of warnings, link blocks and your corrections.")
-    HornetsCard(records.hornetsDefeated(), "DEMO · NOV 1–7", "${records.size} reviewed · $flagged flagged · ${records.size - flagged} corrected")
+    val demo = records.firstOrNull()?.isDemo == true
+    Heading("Your activity", "Protection history", "A local record of warnings and your corrections. Original messages remain in the messaging app.")
+    HornetsCard(records.hornetsDefeated(), if (demo) "DEMO · NOV 1–7" else "SAVED HISTORY · ON THIS PHONE", "${records.size} reviewed · $flagged flagged · ${records.size - flagged} corrected")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         HistoryFilter.entries.forEach { value ->
             val count = records.filtered(value).size
@@ -120,9 +126,9 @@ fun HistoryScreen(records: List<MessageRecord>, review: (String) -> Unit) {
                 }
                 Text(message.title, style = MaterialTheme.typography.titleMedium)
                 Body(message.domain ?: "No link in message")
-                Body("${message.category} · ${if (message.corrected) "Reviewed by you" else "Warning shown (demo)"}")
+                Body("${message.category} · ${if (message.corrected) "Reviewed by you" else message.protectionAction}")
                 if (message.corrected) Text("You marked this as not a scam. Tango flag removed; SMS unchanged.", color = Green, style = MaterialTheme.typography.bodyMedium)
-                else if (message.domainBlocked) Surface(color = GreenTint, shape = MaterialTheme.shapes.medium) {
+                else if (message.isDemo && message.domainBlocked) Surface(color = GreenTint, shape = MaterialTheme.shapes.medium) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         Text("10:43 AM · Domain request blocked (demo)", color = Green, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                         Text("Same attempt as the 10:42 AM warning. Counted once, not twice.", color = Green, style = MaterialTheme.typography.bodySmall)
@@ -132,19 +138,19 @@ fun HistoryScreen(records: List<MessageRecord>, review: (String) -> Unit) {
         }
     }
     if (records.filtered(filter).isEmpty()) Body("No ${filter.name.lowercase()} records.")
-    Body("These are fictional Tango review records. Original messages stay in your messaging app.")
+    Body(if (demo) "These are fictional demo records." else "These are real notification-preview records saved locally. No SMS inbox access is used.")
 }
 
 @Composable
 fun SettingsScreen(alerts: Boolean, access: Boolean, demo: Boolean, openAccess: () -> Unit,
-                   requestAlerts: () -> Unit, vpn: () -> Unit, reset: () -> Unit) {
+                   requestAlerts: () -> Unit, vpn: () -> Unit, reset: () -> Unit, showReal: (() -> Unit)? = null, clearHistory: (() -> Unit)? = null) {
     Heading("Your choices", "Privacy & protection")
     Panel {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Notification access", style = MaterialTheme.typography.titleMedium)
             Badge(if (access) "On" else "Off", if (access) Green else Muted, if (access) GreenTint else Background)
         }
-        Body("Android access may expose sender names, previews and other personal notification details. The frontend does not read or store real notifications.")
+        Body("Android access may expose sender names, previews and other personal notification details. Tango inspects messaging previews locally and retains up to 200 flagged records on this device. Clear saved real history below deletes them.")
         TextAction("Manage notification access ↗", openAccess)
         HorizontalDivider(color = Line)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -169,6 +175,8 @@ fun SettingsScreen(alerts: Boolean, access: Boolean, demo: Boolean, openAccess: 
         Body("No local VPN is running. Simulated Home statuses are for the demo only.")
         TextAction("Local VPN setup →", vpn)
     }
-    Body(if (demo) "Demo preview is on. Permission badges above always show real Android states." else "Demo protection preview is off. History contains fictional sample records.")
+    Body(if (demo) "Demo preview is on. Real monitoring continues independently. Permission badges above show actual Android states." else "Real message mode is selected. Local checks run when Android notification access is connected.")
+    if (showReal != null) SecondaryButton("Show real messages", onClick = showReal)
+    if (clearHistory != null) SecondaryButton("Clear saved real history", onClick = clearHistory)
     SecondaryButton("Reset demo & return to setup", AppIcons.RestartAlt, reset)
 }

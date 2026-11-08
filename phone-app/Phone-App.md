@@ -48,7 +48,7 @@ Shows the current state of notification monitoring and optional suspicious-domai
 
 ## Background Protection / Warning Notification
 
-The planned notification flow uses NotificationListenerService to inspect incoming SMS and RCS notification previews. When a message is flagged, use cancelNotification() to hide the original alert and post a Tango warning with a Review message action.
+The implemented notification flow uses NotificationListenerService to inspect incoming SMS and RCS notification previews. When a message is flagged, use cancelNotification() to hide the original alert and post a Tango warning with a Review message action.
 
 The warning should say that a suspected scam was detected and explain that the original alert was hidden while the message remains in the inbox. Avoid saying that the message itself was blocked or deleted.
 
@@ -147,3 +147,12 @@ Shows notification access, Tango warning-alert permission, and Hornet's Nest sha
 Use the same visual sequence as the extension, adapted for a portrait app screen. Medium risk rolls the suspicious light-mode character into view and pops out its limbs before presenting warning clues. High risk first reveals a hornet, then rolls in the angry light-mode character, pops out its limbs, slashes the hornet into pieces, and presents the warning and protection tip.
 
 Trigger the sequence before reviewing an active medium/high-risk message, including when opening the demo notification. Low-risk and corrected records bypass it. Home provides separate medium/high demo preview buttons; active message reviews provide replay. Respect Android's animation scale, stop sounds while backgrounded, and provide Skip animation and a sound toggle. The sequence stays inside the app and does not modify messages or add hornets.
+
+
+## Current Text-Warning Implementation
+
+The notification listener performs on-device heuristic checks on incoming messaging previews, posts a real warning when multiple indicators are present, and requests dismissal of the matching original alert only after replacement delivery. SMS/RCS content in the messaging inbox is never deleted or modified. Actual cancellation confirmation is recorded from Android's removal callback.
+
+Real warnings, previews, local explanations, corrections, and action state are saved privately on-device, capped at 200 records. Real and demo records are separate. Permission and channel failures retain the original alert; unposted warnings are not counted as warned attempts. No raw message text is uploaded and URL reputation/cloud checks remain unconnected.
+
+See TESTING-MESSAGE-WARNINGS.md for manual steps. This change was implemented without running builds or tests.

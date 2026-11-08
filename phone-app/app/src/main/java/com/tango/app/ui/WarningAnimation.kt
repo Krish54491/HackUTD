@@ -105,7 +105,7 @@ fun WarningAnimationScreen(message: MessageRecord, risk: MessageRisk, review: ()
     Column(Modifier.fillMaxSize().background(Color(0xFF15151B).copy(alpha = .60f * dim))
         .verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Badge("Demo · ${if (high) "High" else "Medium"} risk", if (high) Color(0xFFB42318) else Amber,
+        Badge("${if (message.isDemo) "Demo" else "Local check"} · ${if (high) "High" else "Medium"} risk", if (high) Color(0xFFB42318) else Amber,
             if (high) Color(0xFFFDE7E8) else AmberTint)
         Text(phase, color = if (dim > .5f) Color.White else Ink, style = MaterialTheme.typography.titleLarge)
         WarningStage(elapsed, high, Modifier.fillMaxWidth().heightIn(min = 250.dp, max = 340.dp).aspectRatio(390f / 340f))
@@ -113,7 +113,7 @@ fun WarningAnimationScreen(message: MessageRecord, risk: MessageRisk, review: ()
             Surface(color = Color.White.copy(alpha = .94f), shape = MaterialTheme.shapes.large) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(message.title, style = MaterialTheme.typography.titleMedium)
-                    Body("This animation uses a fictional message. No real message or link is being changed.")
+                    Body(if (message.isDemo) "This animation uses a fictional message. No real message or link is being changed." else "Local checks flagged this notification preview. The original message remains in your messaging inbox.")
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         TextAction(if (muted) "Sound off" else "Sound on") { muted = !muted }
                         TextAction("Skip animation") { elapsed = duration; audio.stopAll() }
@@ -140,7 +140,7 @@ fun WarningAnimationScreen(message: MessageRecord, risk: MessageRisk, review: ()
                     PrimaryButton("Review message", AppIcons.ArrowForward, onClick = review)
                     TextAction("Back to the clues") { step = 0 }
                 }
-                Body("Demo only. The original message stays in the messaging inbox.")
+                Body(if (message.isDemo) "Demo only. The original message stays in the messaging inbox." else "A warning is not proof of a scam. Review the clues; your original message is unchanged.")
             }
         }
     }

@@ -18,12 +18,31 @@ data class MessageRecord(
     val corrected: Boolean = false,
     val domainBlocked: Boolean = false,
     val risk: MessageRisk = MessageRisk.HIGH,
+    val isDemo: Boolean = true,
+    val receivedAt: Long = 0L,
+    val sourcePackage: String = "",
+    val url: String? = null,
+    val warningPosted: Boolean = false,
+    val dismissalRequested: Boolean = false,
+    val originalAlertHidden: Boolean = false,
 ) {
-    val neutralizedLink: String? get() = domain?.let { "hxxps://${it.replace(".", "[.]")}/pay" }
+    val neutralizedLink: String? get() = (url ?: domain?.let { "https://$it/pay" })?.let(::defangUrl)
+    val displayPreview: String get() = URL_PATTERN.replace(preview) { defangUrl(it.value) }
+    val protectionAction: String get() = when {
+        isDemo -> "Warning shown (demo)"
+        originalAlertHidden -> "Warning shown · original alert hidden"
+        dismissalRequested -> "Warning shown · original dismissal requested"
+        warningPosted -> "Warning shown · original alert retained"
+        else -> "Flagged locally · warning alerts unavailable"
+    }
     fun sharingPreview(): ThreatIndicators? = if (corrected || domain == null) null else ThreatIndicators(domain, category, tags)
 }
 // Only this allowlisted payload may cross a future sharing boundary.
 // Sender, message text and personal details are intentionally absent.
+private val URL_PATTERN = Regex("""(?i)\b(?:https?://|www\.)[^\s<>]+""")
+private fun defangUrl(value: String): String = value.replace(Regex("(?i)^https"), "hxxps")
+    .replace(Regex("(?i)^http"), "hxxp").replace(".", "[.]")
+
 data class ThreatIndicators(val domain: String, val category: String, val reasonTags: List<String>)
 enum class HistoryFilter { All, Flagged, Corrected }
 fun List<MessageRecord>.filtered(filter: HistoryFilter): List<MessageRecord> = filter {
@@ -33,7 +52,7 @@ fun List<MessageRecord>.filtered(filter: HistoryFilter): List<MessageRecord> = f
         HistoryFilter.Corrected -> it.corrected
     }
 }
-fun List<MessageRecord>.hornetsDefeated(): Int = filterNot { it.corrected }.distinctBy { it.id }.size
+fun List<MessageRecord>.hornetsDefeated(): Int = filter { !it.corrected && (it.isDemo || it.warningPosted || it.originalAlertHidden) }.distinctBy { it.id }.size
 fun List<MessageRecord>.correct(id: String): List<MessageRecord> = map { if (it.id == id) it.copy(corrected = true) else it }
 
 object DemoRecords {

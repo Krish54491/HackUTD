@@ -17,6 +17,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
 import com.tango.app.data.*
+import com.tango.app.MonitoringStatus
 import kotlinx.coroutines.launch
 
 @Composable
@@ -35,9 +36,14 @@ fun TangoApp(
     val route = entry?.destination?.route ?: "setup"
     val records by model.records.collectAsStateWithLifecycle()
     val demo by model.demo.collectAsStateWithLifecycle()
+    val loadingRecords by model.loading.collectAsStateWithLifecycle()
+    val storageError by model.storageError.collectAsStateWithLifecycle()
+    val operationError by model.operationError.collectAsStateWithLifecycle()
+    val monitoring by MonitoringStatus.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var vpnInfo by rememberSaveable { mutableStateOf(false) }
+    var confirmClear by rememberSaveable { mutableStateOf(false) }
     val roots = listOf("home", "history", "settings")
     val detail = route !in roots && route != "setup"
     fun root(destination: String) {
@@ -45,20 +51,25 @@ fun TangoApp(
     }
     fun notify(text: String) { scope.launch { snackbar.showSnackbar(text) } }
     fun openMessage(id: String) {
-        val message = records.firstOrNull { it.id == id }
+        val message = model.findRecord(id)
         if (message != null && !message.corrected && message.risk in setOf(MessageRisk.MEDIUM, MessageRisk.HIGH)) {
             nav.navigate("warning/$id/${message.risk.name}")
         } else nav.navigate("review/$id")
     }
 
-    LaunchedEffect(openReview) {
+    LaunchedEffect(openReview, loadingRecords, records) {
         openReview?.let { id ->
-            if (records.any { it.id == id }) {
+            if (id.startsWith("live-") && loadingRecords) return@LaunchedEffect
+            if (model.findRecord(id) != null) {
+                if (id.startsWith("live-")) model.showLiveRecords() else model.enableDemo()
                 root("home")
                 openMessage(id)
-            }
+            } else notify("This message record is no longer available.")
             consumeReview()
         }
+    }
+    LaunchedEffect(operationError, storageError) {
+        (operationError ?: storageError)?.let { notify(it) }
     }
     Scaffold(
         containerColor = Background,
@@ -104,7 +115,10 @@ fun TangoApp(
                                 if (alertsAllowed) { showDemoNotification(); notify("Demo warning sent. No real message was read or hidden.") }
                                 else { requestAlerts(); notify("Allow alerts, then tap the demo notification button again.") }
                             },
-                            previewWarning = { risk -> nav.navigate("animation-preview/${risk.name}") })
+                            previewWarning = { risk -> nav.navigate("animation-preview/${risk.name}") },
+                            monitoringConnected = monitoring.connected,
+                            monitoringError = monitoring.error ?: storageError,
+                            showReal = { model.showLiveRecords() })
                     }
                 }
                 composable("history") {
@@ -113,7 +127,9 @@ fun TangoApp(
                 composable("settings") {
                     Screen {
                         SettingsScreen(alertsAllowed, notificationAccess, demo, openNotificationAccess, requestAlerts,
-                            vpn = { vpnInfo = true }, reset = { model.resetDemo(); root("setup") })
+                            vpn = { vpnInfo = true }, reset = { model.resetDemo(); root("setup") },
+                            showReal = { model.showLiveRecords(); root("home") },
+                            clearHistory = { confirmClear = true })
                     }
                 }
                 composable("animation-preview/{risk}") { backEntry ->
@@ -122,7 +138,7 @@ fun TangoApp(
                 }
                 composable("warning/{id}/{risk}") { backEntry ->
                     val id = backEntry.arguments?.getString("id") ?: "delivery"
-                    val message = records.firstOrNull { it.id == id }
+                    val message = records.firstOrNull { it.id == id } ?: model.findRecord(id)
                     val risk = if (backEntry.arguments?.getString("risk") == MessageRisk.HIGH.name) MessageRisk.HIGH else MessageRisk.MEDIUM
                     val review = {
                         nav.popBackStack()
@@ -136,12 +152,13 @@ fun TangoApp(
                     }
                 }
                 composable("review/{id}") { backEntry ->
-                    val message = records.firstOrNull { it.id == backEntry.arguments?.getString("id") }
+                    val id = backEntry.arguments?.getString("id")
+                    val message = records.firstOrNull { it.id == id } ?: id?.let(model::findRecord)
                     Screen {
                         if (message != null) ReviewScreen(message,
                             explanation = { nav.navigate("why/${message.id}") },
                             share = { nav.navigate("share/${message.id}") },
-                            correct = { model.correctMessage(message.id); notify("Marked as not a scam. Demo flag removed; original SMS unchanged.") },
+                            correct = { model.correctMessage(message.id) },
                             animation = if (!message.corrected && message.risk in setOf(MessageRisk.MEDIUM, MessageRisk.HIGH)) {
                                 { nav.navigate("warning/${message.id}/${message.risk.name}") }
                             } else null)
@@ -149,11 +166,13 @@ fun TangoApp(
                     }
                 }
                 composable("why/{id}") { backEntry ->
-                    val message = records.firstOrNull { it.id == backEntry.arguments?.getString("id") }
+                    val id = backEntry.arguments?.getString("id")
+                    val message = records.firstOrNull { it.id == id } ?: id?.let(model::findRecord)
                     Screen { if (message != null) ExplanationScreen(message) { nav.popBackStack() } else Body("Message record not found.") }
                 }
                 composable("share/{id}") { backEntry ->
-                    val message = records.firstOrNull { it.id == backEntry.arguments?.getString("id") }
+                    val id = backEntry.arguments?.getString("id")
+                    val message = records.firstOrNull { it.id == id } ?: id?.let(model::findRecord)
                     Screen {
                         if (message != null) ShareScreen(message,
                             cancel = { nav.popBackStack() },
@@ -164,6 +183,11 @@ fun TangoApp(
             }
         }
     }
+    if (confirmClear) AlertDialog(onDismissRequest = { confirmClear = false },
+        title = { Text("Clear saved message history?") },
+        text = { Text("This deletes this app’s locally saved real message previews and warning records, and dismisses its warning alerts. Messages in your messaging app are unchanged. Demo records are separate.") },
+        confirmButton = { TextButton(onClick = { model.clearLiveHistory(); confirmClear = false }) { Text("Clear history") } },
+        dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Cancel") } })
     if (vpnInfo) AlertDialog(onDismissRequest = { vpnInfo = false },
         icon = { Icon(AppIcons.Shield, null, tint = Pink) },
         title = { Text("Local VPN protection") },
