@@ -191,7 +191,6 @@ export default function App() {
   return (
     <div className="pg-popup">
       <div className="pg-popup-head">
-        <Character mood={blocked.length > 0 ? 'suspicious' : 'happy'} size={28} />
         <Logo />
       </div>
       <div className="pg-popup-body">

@@ -5,7 +5,7 @@
 - Android application developed with Android Studio.
 - Backend functions should be shared with the web extension and website, with the majority of the backend built on Spacetime.
 - The screens below are design mockups for the planned app.
-- Keep the gray circles as placeholders for now.
+- Use the T-Mobile character Light mode asset in the gray placeholder positions.
 - The primary protection happens in the background. The app screens explain warnings, show protection history, and manage permissions.
 - Hiding a notification does not delete the SMS or RCS message. The original message remains in the user's messaging inbox.
 - Demo findings must be labeled as simulated. An unavailable check is not evidence of a threat.
@@ -135,7 +135,7 @@ Shows notification access, Tango warning-alert permission, and Hornet's Nest sha
 ## Frontend / Non-Functional extras
 
 - Match the mockups' pink accents, light backgrounds, rounded white cards, and dark hornets-defeated summary cards.
-- Keep gray logo and character circles as placeholders.
+- Use the T-Mobile character Light mode asset for the logo and character positions.
 - Use green for active protection and corrected records, and amber for suspected-scam warnings.
 - Keep suspicious links non-clickable in Tango's review screens.
 - Highlight the current Home, History, or Settings tab in the bottom navigation.

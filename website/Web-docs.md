@@ -5,7 +5,7 @@
 - Backend functions must be shared with the web extension and mobile app.
 - Majority of the backend must be built on Spacetime.
 - The screens below are design mockups for the planned website.
-- the grey circles are palceholders, leave them as placeholders for now
+- Use the T-Mobile character Light mode asset in the gray placeholder positions.
 - follow the mockups exactly as is to build the frontend.
 - As for the languages, use React, Tailwind and typescript as the main languages
 - the
@@ -80,6 +80,6 @@ Ranks participating users by the number of scams prevented. Show the user's tota
 ## Frontend / Non-Functional extras
 
 - Match the mockups' pink accents, light dashboard background, cards, and sidebar navigation.
-- Replace gray placeholder circles with the corresponding Tango icons or character assets.
+- Use the T-Mobile character Light mode asset for the logo and character positions.
 - Keep the current user's leaderboard row visually distinct.
 - Include links to privacy information, help, and protection settings.

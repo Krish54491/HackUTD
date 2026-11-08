@@ -62,7 +62,7 @@ fun TangoApp(
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (detail) IconButton(onClick = { nav.popBackStack() }) {
                         Icon(AppIcons.ArrowBack, "Go back")
-                    } else Placeholder()
+                    } else CharacterAvatar()
                     Text("tango.", fontSize = 27.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.3).sp)
                 }
                 HorizontalDivider(color = Line.copy(alpha = .3f))

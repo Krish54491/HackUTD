@@ -10,7 +10,7 @@ export async function scanWebsite(input: string, signal: AbortSignal): Promise<S
   const domain = normalizeDomain(input);
   signal = AbortSignal.any([signal, AbortSignal.timeout(120_000)]);
   const host = import.meta.env.VITE_SPACETIME_HOST || 'https://maincloud.spacetimedb.com';
-  const db = import.meta.env.VITE_SPACETIME_DB || 'tango';
+  const db = import.meta.env.VITE_SPACETIME_DB || 'protego';
   const id = await Spacetime.newIdentity(host, signal);
   signal.throwIfAborted();
   const st = new Spacetime(host, db, id.token, signal);

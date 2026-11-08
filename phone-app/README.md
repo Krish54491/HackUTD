@@ -40,7 +40,7 @@ The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
 - Optional sharing preview containing only domain, category, and reason tags. Confirmation is explicitly a local demo, with no upload.
 - Privacy settings, real Android permission state refreshed on resume, and Android settings links.
 - A real, explicitly labeled demo warning notification with a Review message action back into the app. Allow alerts first, then use **Show demo warning notification** on Home.
-- Home / History / Settings bottom navigation, detail-screen back navigation, scrollable screens, and gray placeholder art.
+- Home / History / Settings bottom navigation, detail-screen back navigation, scrollable screens, and the T-Mobile light-mode character asset.
 
 The ViewModel and saved-state handle preserve demo corrections and preview mode across rotation and normal Android state restoration. Reset demo in Settings restores the fixtures. No personal messages are collected, and no database is required.
 

@@ -124,7 +124,7 @@ fun ShareScreen(message: MessageRecord, cancel: () -> Unit, confirm: () -> Unit)
     val preview = message.sharingPreview()
     Heading("Community · optional", "One warning can help others.")
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Placeholder(40)
+        CharacterAvatar(40)
         Text("Hornet’s Nest", style = MaterialTheme.typography.titleLarge)
     }
     if (preview == null) {

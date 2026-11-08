@@ -1,21 +1,34 @@
 package com.tango.app.ui
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.tango.app.R
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun Placeholder(size: Int = 26) { Box(Modifier.size(size.dp).background(Color(0xFFCCCCCC), CircleShape)) }
+fun CharacterAvatar(size: Int = 26) {
+    Box(Modifier.size(size.dp).clipToBounds()) {
+        Image(
+            painter = painterResource(R.drawable.t_mobile_light_mode),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = 1.5f; scaleY = 1.5f },
+        )
+    }
+}
 
 @Composable
 fun Eyebrow(text: String, color: Color = Pink) {
@@ -90,7 +103,7 @@ fun HornetsCard(count: Int, period: String = "NOVEMBER SO FAR", detail: String =
     Panel(Ink) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(period, color = Color(0xFFBBBBCA), fontSize = 11.sp)
-            Placeholder(36)
+            CharacterAvatar(36)
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             Text(count.toString(), color = Color.White, fontSize = 58.sp, lineHeight = 65.sp)

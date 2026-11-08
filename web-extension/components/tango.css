@@ -344,3 +344,8 @@
   color: var(--pg-ink);
   font: 400 12px/1.4 var(--pg-font);
 }
+
+/* The source light-mode image includes transparent padding; frame it without editing the asset. */
+.pg-brand { display: inline-flex; align-items: center; gap: 8px; }
+.pg-character-frame { display: inline-block; overflow: hidden; flex-shrink: 0; vertical-align: middle; }
+.pg-character-frame img { display: block; width: 100%; height: 100%; object-fit: cover; transform: scale(1.5); user-select: none; }

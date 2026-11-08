@@ -10,15 +10,16 @@ export function moodFor(level: RiskLevel | null | undefined): Mood {
   return 'happy';
 }
 
-/** The Tango character. Replaces the gray placeholder circles in the mockups. */
+/** Light-mode character, with existing warning expressions for elevated risk. */
 export function Character({ mood, size = 120 }: { mood: Mood; size?: number }) {
   // getURL's typing only knows files WXT has seen; characters live in /public.
-  const src = (browser.runtime.getURL as (p: string) => string)(`/characters/${mood}.png`);
+  const src = (browser.runtime.getURL as (p: string) => string)(`/characters/${mood === 'happy' ? 'light-mode' : mood}.png`);
+  if (mood === 'happy') return <span className="pg-character-frame" style={{ width: size, height: size }}><img src={src} width={size} height={size} alt="" draggable={false}/></span>;
   return <img className="pg-character" src={src} width={size} height={size} alt="" draggable={false} />;
 }
 
 export function Logo() {
-  return <span className="pg-logo">tango.</span>;
+  return <span className="pg-brand"><Character mood="happy" size={28}/><span className="pg-logo">tango.</span></span>;
 }
 
 /** Green → yellow → red bar with an arrow at `score`%. */
