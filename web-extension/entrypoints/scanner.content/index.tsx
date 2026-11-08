@@ -25,7 +25,7 @@ import { blockPage } from '@/lib/block-page';
 import { createTopLayer, type TopLayer } from '@/lib/top-layer';
 import { bg } from '@/lib/messaging';
 import type { CachedForPage, RiskLevel, SiteReport, TabMessage } from '@/lib/types';
-import '@/components/protego.css';
+import '@/components/tango.css';
 
 const RANK: Record<RiskLevel, number> = { none: 0, low: 1, medium: 2, high: 3 };
 /** Server-cached sites answer in well under a second; don't flash the popup for those. */
@@ -61,7 +61,7 @@ export default defineContentScript({
       // Inside our own modal <dialog>: the browser's top layer, above every z-index on the page.
       const l = (layer = createTopLayer());
       const p: Promise<void> = createShadowRootUi(ctx, {
-        name: 'protego-report',
+        name: 'tango-report',
         position: 'modal',
         anchor: l.el,
         append: 'last',

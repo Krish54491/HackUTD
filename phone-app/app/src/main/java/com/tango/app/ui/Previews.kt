@@ -1,4 +1,4 @@
-package com.protego.app.ui
+package com.tango.app.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -8,11 +8,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.protego.app.data.DemoRecords
+import com.tango.app.data.DemoRecords
 
 @Composable
 private fun PreviewFrame(content: @Composable ColumnScope.() -> Unit) {
-    ProtegoTheme {
+    TangoTheme {
         Surface(color = Background) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp), content = content)

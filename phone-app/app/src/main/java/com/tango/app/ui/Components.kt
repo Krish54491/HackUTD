@@ -1,4 +1,4 @@
-package com.protego.app.ui
+package com.tango.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*

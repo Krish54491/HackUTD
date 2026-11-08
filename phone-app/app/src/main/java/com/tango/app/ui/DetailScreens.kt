@@ -1,4 +1,4 @@
-package com.protego.app.ui
+package com.tango.app.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -10,7 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.protego.app.data.MessageRecord
+import com.tango.app.data.MessageRecord
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -23,7 +23,7 @@ fun ReviewScreen(message: MessageRecord, explanation: () -> Unit, share: () -> U
             Icon(if (message.corrected) AppIcons.CheckCircle else AppIcons.WarningAmber, null, tint = if (message.corrected) Green else Amber)
             Text(if (message.corrected) "Marked as not a scam" else "Suspected scam", color = if (message.corrected) Green else Amber, style = MaterialTheme.typography.titleLarge)
         }
-        Text(if (message.corrected) "You corrected this demo record. The Protego flag was removed. The original SMS is unchanged."
+        Text(if (message.corrected) "You corrected this demo record. The Tango flag was removed. The original SMS is unchanged."
             else message.clues.joinToString(" ") { it.title + "." } + " Review the clues before responding.", style = MaterialTheme.typography.bodyLarge)
         Text("Demo check · ${message.time}", color = if (message.corrected) Green else Amber, style = MaterialTheme.typography.bodySmall)
     }

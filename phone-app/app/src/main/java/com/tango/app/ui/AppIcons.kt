@@ -1,4 +1,4 @@
-package com.protego.app.ui
+package com.tango.app.ui
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType

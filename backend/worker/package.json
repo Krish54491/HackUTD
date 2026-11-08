@@ -1,5 +1,5 @@
 {
-  "name": "protego-worker",
+  "name": "tango-worker",
   "version": "1.0.0",
   "scripts": {
     "start": "tsx src/index.ts",

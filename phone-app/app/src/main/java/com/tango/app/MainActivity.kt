@@ -1,4 +1,4 @@
-package com.protego.app
+package com.tango.app
 
 import android.Manifest
 import android.app.Notification
@@ -20,8 +20,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.protego.app.ui.ProtegoApp
-import com.protego.app.ui.ProtegoTheme
+import com.tango.app.ui.TangoApp
+import com.tango.app.ui.TangoTheme
 
 class MainActivity : ComponentActivity() {
     private var openReview by mutableStateOf<String?>(null)
@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         if (savedInstanceState == null) openReview = intent.getStringExtra("review")
         setContent {
-            ProtegoTheme {
+            TangoTheme {
                 val context = LocalContext.current
                 val lifecycle = LocalLifecycleOwner.current
                 val manager = context.getSystemService(NotificationManager::class.java)
@@ -47,7 +47,7 @@ class MainActivity : ComponentActivity() {
                     lifecycle.lifecycle.addObserver(observer)
                     onDispose { lifecycle.lifecycle.removeObserver(observer) }
                 }
-                ProtegoApp(
+                TangoApp(
                     alertsAllowed = alerts, notificationAccess = access,
                     openReview = openReview, consumeReview = { openReview = null },
                     requestAlerts = {
@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
             .putExtra("review", "delivery").addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val content = "Simulated delivery-fee request. No real message was read or hidden."
         manager.notify(1, Notification.Builder(this, "demo-warnings")
-            .setSmallIcon(com.protego.app.R.drawable.ic_protego)
+            .setSmallIcon(com.tango.app.R.drawable.ic_tango)
             .setContentTitle("Demo · suspected scam detected")
             .setContentText(content)
             .setStyle(Notification.BigTextStyle().bigText(content))

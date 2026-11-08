@@ -1,4 +1,4 @@
-package com.protego.app.data
+package com.tango.app.data
 
 import org.junit.Assert.*
 import org.junit.Test

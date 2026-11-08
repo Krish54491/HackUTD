@@ -1,4 +1,4 @@
-package com.protego.app.ui
+package com.tango.app.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,7 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.protego.app.data.*
+import com.tango.app.data.*
 
 @Composable
 fun SetupScreen(alerts: Boolean, access: Boolean, requestAlerts: () -> Unit, openAccess: () -> Unit,
@@ -20,8 +20,8 @@ fun SetupScreen(alerts: Boolean, access: Boolean, requestAlerts: () -> Unit, ope
         Text("${listOf(alerts, access).count { it }} of 2 required permissions ready", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
         Body("Not active yet")
     }
-    PermissionCard(AppIcons.NotificationsActive, "Show Protego alerts", if (alerts) "Allowed" else "Needed", alerts,
-        "Warnings can appear when a message looks suspicious. ${if (alerts) "You’ve allowed this permission." else "Allow Protego to show warning notifications."}",
+    PermissionCard(AppIcons.NotificationsActive, "Show Tango alerts", if (alerts) "Allowed" else "Needed", alerts,
+        "Warnings can appear when a message looks suspicious. ${if (alerts) "You’ve allowed this permission." else "Allow Tango to show warning notifications."}",
         if (alerts) "Manage Android alerts ↗" else "Allow warning alerts ↗", requestAlerts)
     PermissionCard(AppIcons.ChatBubbleOutline, "Notification access", if (access) "Allowed" else "Needed", access,
         "Android grants access to notifications, which may include sender names, message previews and personal details. This frontend does not read real messages.",
@@ -115,7 +115,7 @@ fun HistoryScreen(records: List<MessageRecord>, review: (String) -> Unit) {
                 Text(message.title, style = MaterialTheme.typography.titleMedium)
                 Body(message.domain ?: "No link in message")
                 Body("${message.category} · ${if (message.corrected) "Reviewed by you" else "Warning shown (demo)"}")
-                if (message.corrected) Text("You marked this as not a scam. Protego flag removed; SMS unchanged.", color = Green, style = MaterialTheme.typography.bodyMedium)
+                if (message.corrected) Text("You marked this as not a scam. Tango flag removed; SMS unchanged.", color = Green, style = MaterialTheme.typography.bodyMedium)
                 else if (message.domainBlocked) Surface(color = GreenTint, shape = MaterialTheme.shapes.medium) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         Text("10:43 AM · Domain request blocked (demo)", color = Green, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
@@ -126,7 +126,7 @@ fun HistoryScreen(records: List<MessageRecord>, review: (String) -> Unit) {
         }
     }
     if (records.filtered(filter).isEmpty()) Body("No ${filter.name.lowercase()} records.")
-    Body("These are fictional Protego review records. Original messages stay in your messaging app.")
+    Body("These are fictional Tango review records. Original messages stay in your messaging app.")
 }
 
 @Composable
@@ -142,7 +142,7 @@ fun SettingsScreen(alerts: Boolean, access: Boolean, demo: Boolean, openAccess: 
         TextAction("Manage notification access ↗", openAccess)
         HorizontalDivider(color = Line)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Protego warning alerts", style = MaterialTheme.typography.titleMedium)
+            Text("Tango warning alerts", style = MaterialTheme.typography.titleMedium)
             Badge(if (alerts) "Allowed" else "Off", if (alerts) Green else Muted, if (alerts) GreenTint else Background)
         }
         TextAction("Manage Android alerts ↗", requestAlerts)

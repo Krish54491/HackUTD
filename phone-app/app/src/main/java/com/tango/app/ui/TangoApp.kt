@@ -1,4 +1,4 @@
-package com.protego.app.ui
+package com.tango.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -16,11 +16,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
-import com.protego.app.data.*
+import com.tango.app.data.*
 import kotlinx.coroutines.launch
 
 @Composable
-fun ProtegoApp(
+fun TangoApp(
     alertsAllowed: Boolean,
     notificationAccess: Boolean,
     openReview: String?,
@@ -28,7 +28,7 @@ fun ProtegoApp(
     requestAlerts: () -> Unit,
     openNotificationAccess: () -> Unit,
     showDemoNotification: () -> Unit,
-    model: ProtegoViewModel = viewModel(),
+    model: TangoViewModel = viewModel(),
 ) {
     val nav = rememberNavController()
     val entry by nav.currentBackStackEntryAsState()
@@ -63,7 +63,7 @@ fun ProtegoApp(
                     if (detail) IconButton(onClick = { nav.popBackStack() }) {
                         Icon(AppIcons.ArrowBack, "Go back")
                     } else Placeholder()
-                    Text("protego.", fontSize = 27.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.3).sp)
+                    Text("tango.", fontSize = 27.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.3).sp)
                 }
                 HorizontalDivider(color = Line.copy(alpha = .3f))
             }

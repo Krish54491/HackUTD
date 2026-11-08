@@ -7179,7 +7179,7 @@ function clip(s, n) {
 //#endregion
 //#region C:/Users/krish/OneDrive/Documents/JavaScript/HackUTD 2026/HackUTD/backend/spacetime/src/index.ts
 /**
-* Protego — SpacetimeDB module.
+* Tango — SpacetimeDB module.
 *
 * This is the shared backend for the web extension, website, and phone app.
 * All state lives here; clients only ever call reducers and read public tables.
@@ -7284,7 +7284,7 @@ const spacetimedb = schema({
 	})
 });
 function requireWorker(ctx) {
-	if (!ctx.db.worker.identity_hex.find(hex(ctx.sender))) throw new SenderError("Only a registered Protego worker may call this reducer");
+	if (!ctx.db.worker.identity_hex.find(hex(ctx.sender))) throw new SenderError("Only a registered Tango worker may call this reducer");
 }
 const init = spacetimedb.init((ctx) => {
 	ctx.db.config.insert({

@@ -5,7 +5,7 @@ import spacetimedb, * as mod from '../src/index';
 import * as lib from '../src/lib';
 
 const user = (sub: string) =>
-  TestAuth.fromJwtPayload(JSON.stringify({ iss: 'https://test.local', sub, aud: 'protego' }), ConnectionId.random());
+  TestAuth.fromJwtPayload(JSON.stringify({ iss: 'https://test.local', sub, aud: 'tango' }), ConnectionId.random());
 
 function setup() {
   const h = createModuleTestHarness(spacetimedb, mod);

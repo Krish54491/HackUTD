@@ -10,7 +10,7 @@ export async function scanWebsite(input: string, signal: AbortSignal): Promise<S
   const domain = normalizeDomain(input);
   signal = AbortSignal.any([signal, AbortSignal.timeout(120_000)]);
   const host = import.meta.env.VITE_SPACETIME_HOST || 'https://maincloud.spacetimedb.com';
-  const db = import.meta.env.VITE_SPACETIME_DB || 'protego';
+  const db = import.meta.env.VITE_SPACETIME_DB || 'tango';
   const id = await Spacetime.newIdentity(host, signal);
   signal.throwIfAborted();
   const st = new Spacetime(host, db, id.token, signal);
@@ -33,5 +33,5 @@ export async function scanWebsite(input: string, signal: AbortSignal): Promise<S
     const queue = await st.sql(`SELECT * FROM scan_request WHERE domain = ${sqlStr(domain)}`);
     if (queue[0]?.status === 'failed') throw new Error('The security check failed. Please try again.');
   }
-  throw new Error('The security check is taking longer than expected. Check that the Protego worker is running and try again.');
+  throw new Error('The security check is taking longer than expected. Check that the Tango worker is running and try again.');
 }

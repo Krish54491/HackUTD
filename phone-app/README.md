@@ -1,4 +1,4 @@
-# Protego Android frontend
+# Tango Android frontend
 
 Native Kotlin / Jetpack Compose implementation of [Phone-App.md](Phone-App.md). Open **this `phone-app` directory** as a project in Android Studio, rather than creating a new project over it.
 
@@ -52,7 +52,7 @@ Spacetime sharing, real notification monitoring, DNS/VPN filtering, reputation s
 
 ## Structure
 
-- `app/src/main/java/com/protego/app/ui/`: Compose theme, reusable components, screens, and navigation.
-- `app/src/main/java/com/protego/app/data/`: fictional records, correction/filter logic, allowlisted threat payload, and saved-state ViewModel.
+- `app/src/main/java/com/tango/app/ui/`: Compose theme, reusable components, screens, and navigation.
+- `app/src/main/java/com/tango/app/data/`: fictional records, correction/filter logic, allowlisted threat payload, and saved-state ViewModel.
 - `MainActivity.kt`: lifecycle-aware Android permission checks and demo notification handling.
 - `app/src/test/`: unique-attempt counts, corrections, filters, sharing payload, and defanged-link tests.

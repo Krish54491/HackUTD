@@ -60,7 +60,7 @@ export default function App() {
         setView({ name: 'listings' });
       } else if (d && tab?.id !== undefined) {
         setView({ name: 'page' });
-        // Page not checked yet (e.g. it was open before Protego was installed): check it now.
+        // Page not checked yet (e.g. it was open before Tango was installed): check it now.
         if (!s.tab || s.tab.scan.state === 'idle' || s.tab.scan.state === 'error') {
           await bg({ type: 'CHECK_CURRENT_PAGE', tabId: tab.id, domain: d }).catch(() => {});
           await refresh(tab.id, d);
@@ -146,7 +146,7 @@ export default function App() {
             <Character mood="happy" size={116} />
           </div>
           <h1>Checking this website…</h1>
-          <p className="pg-sub">Protego is looking for scam warning signs. The first check of a site can take up to a minute.</p>
+          <p className="pg-sub">Tango is looking for scam warning signs. The first check of a site can take up to a minute.</p>
           <div className="pg-domain-pill">
             <span className="pg-spinner" style={{ color: 'var(--pg-pink)' }} /> {domain}
           </div>

@@ -7,11 +7,11 @@ const STDB_HOST = process.env.WXT_SPACETIME_HOST ?? 'https://maincloud.spacetime
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   manifest: {
-    name: 'Protego',
+    name: 'Tango',
     description: 'Checks websites for scams before you pay, and hides fake job, scholarship and rental listings.',
     permissions: ['storage', 'activeTab'],
     host_permissions: [`${new URL(STDB_HOST).origin}/*`],
-    action: { default_title: 'Protego' },
+    action: { default_title: 'Tango' },
     web_accessible_resources: [{ resources: ['characters/*.png'], matches: ['<all_urls>'] }],
   },
 });

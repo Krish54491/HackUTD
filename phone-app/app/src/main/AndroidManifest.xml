@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <application android:allowBackup="false" android:label="Protego" android:icon="@drawable/ic_protego" android:theme="@style/Theme.Protego" android:supportsRtl="true">
+    <application android:allowBackup="false" android:label="Tango" android:icon="@drawable/ic_tango" android:theme="@style/Theme.Tango" android:supportsRtl="true">
         <activity android:name=".MainActivity" android:launchMode="singleTop" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <service android:name=".ProtectionAccessService" android:label="Protego notification access" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" android:exported="true">
+        <service android:name=".ProtectionAccessService" android:label="Tango notification access" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" android:exported="true">
             <intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter>
         </service>
     </application>

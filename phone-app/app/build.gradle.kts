@@ -4,10 +4,10 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 android {
-    namespace = "com.protego.app"
+    namespace = "com.tango.app"
     compileSdk = 36
     defaultConfig {
-        applicationId = "com.protego.app"
+        applicationId = "com.tango.app"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

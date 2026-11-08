@@ -1,4 +1,4 @@
-<resources><style name="Theme.Protego" parent="android:style/Theme.Material.Light.NoActionBar">
+<resources><style name="Theme.Tango" parent="android:style/Theme.Material.Light.NoActionBar">
     <item name="android:fontFamily">sans</item>
     <item name="android:windowLightStatusBar">true</item>
     <item name="android:windowLightNavigationBar">true</item>

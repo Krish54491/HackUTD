@@ -1,11 +1,11 @@
-package com.protego.app.data
+package com.tango.app.data
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class ProtegoViewModel(private val savedState: SavedStateHandle) : ViewModel() {
+class TangoViewModel(private val savedState: SavedStateHandle) : ViewModel() {
     private val corrected = savedState.get<ArrayList<String>>("corrected") ?: arrayListOf("dental")
     private val _records = MutableStateFlow(DemoRecords.messages.map { it.copy(corrected = it.id in corrected) })
     val records = _records.asStateFlow()

@@ -128,7 +128,7 @@ async function searchDuckDuckGo(q: string): Promise<SearchHit[]> {
 async function searchWikipedia(q: string): Promise<SearchHit[]> {
   const res = await fetch(
     `https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&srlimit=3&srsearch=${encodeURIComponent(q)}`,
-    { headers: { 'User-Agent': 'ProtegoHackathon/1.0 (anti-scam research)' }, signal: AbortSignal.timeout(8_000) }
+    { headers: { 'User-Agent': 'TangoHackathon/1.0 (anti-scam research)' }, signal: AbortSignal.timeout(8_000) }
   );
   const j = (await res.json()) as { query?: { search?: { title: string; snippet: string }[] } };
   return (j.query?.search ?? []).map(s => ({

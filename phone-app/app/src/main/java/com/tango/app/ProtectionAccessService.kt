@@ -1,4 +1,4 @@
-package com.protego.app
+package com.tango.app
 
 import android.service.notification.NotificationListenerService
 

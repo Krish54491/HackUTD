@@ -1,4 +1,4 @@
-package com.protego.app.ui
+package com.tango.app.ui
 
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -20,7 +20,7 @@ val AmberTint = Color(0xFFFFF5E5)
 val Line = Color(0xFFE2E2E9)
 
 @Composable
-fun ProtegoTheme(content: @Composable () -> Unit) {
+fun TangoTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = lightColorScheme(primary = Pink, onPrimary = Color.White,
             background = Background, surface = Color.White, onSurface = Ink,

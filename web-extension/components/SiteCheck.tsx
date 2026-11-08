@@ -39,7 +39,7 @@ export function SiteCheck({ domain, view, onSkip }: { domain: string; view: Chec
         <span className="pg-modal-kicker">Website security check</span>
       </header>
       <div className="pg-check-body">
-        <div data-protego-hornet-slot className={`pg-check-char${view.kind === 'checking' ? ' pg-bob' : ''}`}>
+        <div data-tango-hornet-slot className={`pg-check-char${view.kind === 'checking' ? ' pg-bob' : ''}`}>
           <Character mood={mood} size={120} />
         </div>
         <div className={`pg-bubble${view.kind === 'safe' ? ' pg-bubble-safe' : ''}`}>

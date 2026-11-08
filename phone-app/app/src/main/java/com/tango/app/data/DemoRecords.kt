@@ -1,4 +1,4 @@
-package com.protego.app.data
+package com.tango.app.data
 
 data class Clue(val title: String, val detail: String)
 data class MessageRecord(
