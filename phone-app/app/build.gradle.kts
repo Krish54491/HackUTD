@@ -12,8 +12,14 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+        // "Report a hornet" server. Same database as the website and extension; override with
+        // -Ptango.spacetimeHost=http://10.0.2.2:3000 -Ptango.spacetimeDb=<name> to test against a local SpacetimeDB.
+        val spacetimeHost = providers.gradleProperty("tango.spacetimeHost").getOrElse("https://maincloud.spacetimedb.com")
+        val spacetimeDb = providers.gradleProperty("tango.spacetimeDb").getOrElse("protego")
+        buildConfigField("String", "SPACETIME_HOST", "\"$spacetimeHost\"")
+        buildConfigField("String", "SPACETIME_DB", "\"$spacetimeDb\"")
     }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

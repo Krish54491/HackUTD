@@ -1,4 +1,5 @@
 import type { Sound } from './sound-types';
+import type { ReportCategory } from './report-categories';
 
 export type RiskLevel = 'none' | 'low' | 'medium' | 'high';
 export type Severity = 'info' | 'low' | 'medium' | 'high';
@@ -55,7 +56,9 @@ export type BgMessage =
   | { type: 'GET_LISTINGS_ENABLED'; site: string }
   | { type: 'SET_LISTINGS_ENABLED'; tabId: number; site: string; enabled: boolean }
   | { type: 'LEAVE_SITE'; tabId?: number }
-  | { type: 'SOUND'; sound: Sound; action: 'play' | 'stop' };
+  | { type: 'SOUND'; sound: Sound; action: 'play' | 'stop' }
+  | { type: 'REPORT_SITE'; input: string; category: ReportCategory; note: string }
+  | { type: 'GET_COMMUNITY_FLAG'; domain: string };
 
 /** Messages sent from the background to content scripts. */
 export type TabMessage =

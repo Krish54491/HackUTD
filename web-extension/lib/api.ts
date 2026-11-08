@@ -6,6 +6,7 @@ import { browser } from 'wxt/browser';
 import { Spacetime, ReducerError, sqlStr } from './stdb';
 import { STDB_DB, STDB_HOST, SCAN_TIMEOUT_MS, LISTING_TIMEOUT_MS, FORCE_RESCAN_MIN_MS } from './config';
 import type { ListingItem, ListingResult, Reason, SiteReport } from './types';
+import type { CommunityFlag, ReportCategory } from './report-categories';
 import { sha256Hex } from './domain';
 
 let clientPromise: Promise<{ st: Spacetime; userId: string }> | null = null;
@@ -111,6 +112,40 @@ export async function getHornets(): Promise<number> {
 export async function syncListingFilter(site: string, enabled: boolean) {
   const { st } = await client();
   await st.call('set_listing_filter', await sha256Hex(site), enabled);
+}
+
+/** "Report a hornet": add this install's report to the Hornet's Nest. */
+export async function reportSite(domain: string, category: ReportCategory, note: string) {
+  const { st } = await client();
+  try {
+    await st.call('report_site', domain, category, note);
+  } catch (e) {
+    if (e instanceof ReducerError && e.status === 404) {
+      throw new Error("Reporting isn't switched on for this Tango server yet. Please try again later.");
+    }
+    // SpacetimeDB answers a reducer's SenderError (bad input, daily limit) with HTTP 530.
+    if (e instanceof ReducerError && (e.status < 500 || e.status === 530)) throw new Error(e.body.trim() || 'Tango could not accept this report.');
+    throw e;
+  }
+}
+
+/** Public community totals for a domain, or null if nobody has reported it (or the server predates reports). */
+export async function getCommunityFlag(domain: string): Promise<CommunityFlag | null> {
+  const { st } = await client();
+  try {
+    const rows = await st.sql(`SELECT * FROM community_flag WHERE domain = ${sqlStr(domain)}`);
+    const r = rows[0];
+    if (!r) return null;
+    let categories: CommunityFlag['categories'] = {};
+    try {
+      categories = JSON.parse(String(r.categories_json || '{}'));
+    } catch {
+      /* keep empty */
+    }
+    return { domain: String(r.domain), reports: Number(r.reports), categories };
+  } catch {
+    return null;
+  }
 }
 
 export { ReducerError };

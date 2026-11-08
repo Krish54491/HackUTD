@@ -41,6 +41,7 @@ The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
 - Privacy settings, real Android permission state refreshed on resume, and Android settings links.
 - A real, explicitly labeled demo warning notification with a Review message action back into the app. Allow alerts first, then use **Show demo warning notification** on Home.
 - Home / History / Settings bottom navigation, detail-screen back navigation, scrollable screens, and the T-Mobile light-mode character asset.
+- **Report a hornet** (live): the flag icon in the top bar of Home / History / Settings, or the **Spot a hornet Tango missed?** card on Home, opens a short form (website, scam type, optional note). Reports go to the same SpacetimeDB Hornet's Nest as the website and browser extension, so all three count together.
 
 The ViewModel and saved-state handle preserve demo corrections and preview mode across rotation and normal Android state restoration. Reset demo in Settings restores the fixtures. No personal messages are collected, and no database is required.
 
@@ -48,11 +49,19 @@ The ViewModel and saved-state handle preserve demo corrections and preview mode 
 
 The records are fictional; they do not come from the phone's SMS inbox. Notification access can be granted through Android settings, but the registered service is only a permission integration point and does not read, classify, hide, or dismiss real notifications. VPN setup explains that filtering is not connected. The app never labels either feature as running; preview statuses say **Demo**.
 
-Spacetime sharing, real notification monitoring, DNS/VPN filtering, reputation services, and cloud classification are not implemented in this frontend. No internet permission is declared. T-Mobile's official guide opens in the device's browser when requested. Sharing and cloud-analysis consent remain separate integration points.
+Message-based Spacetime sharing, real notification monitoring, DNS/VPN filtering, reputation services, and cloud classification are not implemented in this frontend. T-Mobile's official guide opens in the device's browser when requested. Sharing and cloud-analysis consent remain separate integration points.
+
+The `INTERNET` permission is used only by **Report a hornet**. A report sends just the website, the chosen category and the optional note, under an anonymous SpacetimeDB identity stored in app preferences; message text and senders never leave the phone. Other people only see per-site totals. The fictional demo messages are never reported.
+
+By default reports go to `https://maincloud.spacetimedb.com`, database `protego`. To test against a local SpacetimeDB on your computer from the emulator (debug builds allow plain HTTP to `10.0.2.2` only):
+
+```sh
+./gradlew :app:installDebug -Ptango.spacetimeHost=http://10.0.2.2:3000 -Ptango.spacetimeDb=<local-db-name>
+```
 
 ## Structure
 
 - `app/src/main/java/com/tango/app/ui/`: Compose theme, reusable components, screens, and navigation.
-- `app/src/main/java/com/tango/app/data/`: fictional records, correction/filter logic, allowlisted threat payload, and saved-state ViewModel.
+- `app/src/main/java/com/tango/app/data/`: fictional records, correction/filter logic, allowlisted threat payload, saved-state ViewModel, and `HornetNest.kt` (the Report a hornet SpacetimeDB client).
 - `MainActivity.kt`: lifecycle-aware Android permission checks and demo notification handling.
-- `app/src/test/`: unique-attempt counts, corrections, filters, sharing payload, and defanged-link tests.
+- `app/src/test/`: unique-attempt counts, corrections, filters, sharing payload, defanged-link, and report domain/category tests.

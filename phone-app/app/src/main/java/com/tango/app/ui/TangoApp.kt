@@ -10,12 +10,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
+import androidx.navigation.navArgument
 import com.tango.app.data.*
 import kotlinx.coroutines.launch
 
@@ -36,6 +38,8 @@ fun TangoApp(
     val records by model.records.collectAsStateWithLifecycle()
     val demo by model.demo.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val nest = remember { HornetNest(context) }
     val scope = rememberCoroutineScope()
     var vpnInfo by rememberSaveable { mutableStateOf(false) }
     val roots = listOf("home", "history", "settings")
@@ -64,6 +68,10 @@ fun TangoApp(
                         Icon(AppIcons.ArrowBack, "Go back")
                     } else CharacterAvatar()
                     Text("tango.", fontSize = 27.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.3).sp)
+                    if (route in roots) {
+                        Spacer(Modifier.weight(1f))
+                        IconButton(onClick = { nav.navigate("report") }) { Icon(AppIcons.Flag, "Report a hornet", tint = Pink) }
+                    }
                 }
                 HorizontalDivider(color = Line.copy(alpha = .3f))
             }
@@ -96,7 +104,8 @@ fun TangoApp(
                             demoNotification = {
                                 if (alertsAllowed) { showDemoNotification(); notify("Demo warning sent. No real message was read or hidden.") }
                                 else { requestAlerts(); notify("Allow alerts, then tap the demo notification button again.") }
-                            })
+                            },
+                            report = { nav.navigate("report") })
                     }
                 }
                 composable("history") {
@@ -130,6 +139,9 @@ fun TangoApp(
                             confirm = { notify("Demo confirmation only. Nothing was uploaded; Spacetime sharing is not connected.") })
                         else Body("Message record not found.")
                     }
+                }
+                composable("report?site={site}", arguments = listOf(navArgument("site") { defaultValue = "" })) { backEntry ->
+                    Screen { ReportScreen(backEntry.arguments?.getString("site").orEmpty(), nest) { nav.popBackStack() } }
                 }
             }
         }

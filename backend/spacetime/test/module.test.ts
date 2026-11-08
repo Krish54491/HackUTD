@@ -105,6 +105,45 @@ describe('listings', () => {
   });
 });
 
+describe('community reports', () => {
+  it('counts one report per user per domain and tracks categories', () => {
+    const { h } = setup();
+    const alice = user('alice');
+    const bob = user('bob');
+    h.withReducerTx(alice, ctx => mod.report_site(ctx, { domain: 'https://www.Fake-Shop.example/cart', category: 'shopping', note: 'Never shipped' }));
+    h.withReducerTx(bob, ctx => mod.report_site(ctx, { domain: 'fake-shop.example', category: 'phishing', note: '' }));
+    let flag = h.db.community_flag.domain.find('fake-shop.example')!;
+    expect(flag.reports).toBe(2);
+    expect(JSON.parse(flag.categories_json)).toEqual({ shopping: 1, phishing: 1 });
+
+    // Alice changes her mind about the category: still two reports.
+    h.withReducerTx(alice, ctx => mod.report_site(ctx, { domain: 'fake-shop.example', category: 'phishing', note: 'Fake login page' }));
+    flag = h.db.community_flag.domain.find('fake-shop.example')!;
+    expect(flag.reports).toBe(2);
+    expect(JSON.parse(flag.categories_json)).toEqual({ phishing: 2 });
+    expect(h.db.hornet_report.count()).toBe(2n);
+  });
+
+  it('rejects bad input and rate-limits new reports per day', () => {
+    const { h } = setup();
+    const carol = user('carol');
+    expect(() => h.withReducerTx(carol, ctx => mod.report_site(ctx, { domain: 'not a domain', category: 'other', note: '' }))).toThrow();
+    expect(() => h.withReducerTx(carol, ctx => mod.report_site(ctx, { domain: 'ok.example', category: 'malware', note: '' }))).toThrow(/category/);
+
+    for (let i = 0; i < lib.MAX_REPORTS_PER_DAY; i++) {
+      h.withReducerTx(carol, ctx => mod.report_site(ctx, { domain: `site${i}.example`, category: 'other', note: 'x'.repeat(500) }));
+    }
+    expect(() => h.withReducerTx(carol, ctx => mod.report_site(ctx, { domain: 'one-more.example', category: 'other', note: '' }))).toThrow(/tomorrow/);
+    // Updating an existing report doesn't use quota.
+    h.withReducerTx(carol, ctx => mod.report_site(ctx, { domain: 'site0.example', category: 'phishing', note: '' }));
+    expect(h.db.hornet_report.id.find(`${h.withReducerTx(carol, ctx => lib.hex(ctx.sender))}:site1.example`)?.note).toHaveLength(lib.MAX_REPORT_NOTE);
+
+    h.clock.set(Timestamp.fromDate(new Date('2026-11-08T12:00:01Z')));
+    h.withReducerTx(carol, ctx => mod.report_site(ctx, { domain: 'one-more.example', category: 'other', note: '' }));
+    expect(h.db.community_flag.domain.find('one-more.example')?.reports).toBe(1);
+  });
+});
+
 describe('per-user state', () => {
   it('counts hornets per user and stores hashed site toggles', () => {
     const { h } = setup();

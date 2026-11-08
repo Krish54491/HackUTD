@@ -23,6 +23,7 @@ Example flow:
 - The user taps Review message to inspect the notification preview and the warning signs.
 - Optional domain filtering can block a request to a known-bad domain.
 - The user can review an explanation, correct the flag, or choose to share threat indicators with the Hornet's Nest via Spacetime.
+- If the user spots a scam website Tango missed, they can report it from the flag icon in the top bar or the "Spot a hornet Tango missed?" card on Home. The report (website, scam type, optional note) joins the same Hornet's Nest as website and browser-extension reports.
 
 ## Protection Setup
 

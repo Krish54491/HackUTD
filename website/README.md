@@ -16,7 +16,9 @@ Website checks use the same Spacetime HTTP client and reducers as the extension.
 
 ```dotenv
 VITE_SPACETIME_HOST=https://maincloud.spacetimedb.com
-VITE_SPACETIME_DB=tango
+VITE_SPACETIME_DB=protego
 ```
 
 Scans use an anonymous backend identity, separate from the simulated dashboard sign-in. No fake safety verdicts are generated if the backend is unavailable. Protection history and leaderboard are demo data; live account synchronization is not implemented.
+
+**Report a hornet** lets anyone report a scam website Tango missed. It opens from the sidebar, the **Spot a hornet Tango missed?** card under the leaderboard preview, or the link at the bottom of **Check a website** (prefilled with the checked site). Reports are live and shared with the browser extension and phone app through the `report_site` reducer. The browser keeps one anonymous identity in `localStorage` (`tango.reporter-token`) so re-reporting a site updates the earlier report and the daily limit applies. Check results also show how many people reported the site.

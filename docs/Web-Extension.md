@@ -58,7 +58,8 @@ npm run build          # production build in .output/chrome-mv3 (load unpacked)
 | Page signals (the privacy boundary: no form values, cookies, query strings, or page text) | `lib/signals.ts`                                                     |
 | Auto-scan and the security report modal over the page                                     | `entrypoints/scanner.content/`, `components/RiskReport.tsx`          |
 | Fake listings (LinkedIn Jobs, Zillow, Apartments.com)                                     | `entrypoints/listings.content/`, selectors in `lib/listing-sites.ts` |
-| Popup: check view, clean result, risk result, listings view                               | `entrypoints/popup/App.tsx`                                          |
+| Popup: check view, clean result, risk result, listings view, Report a hornet              | `entrypoints/popup/App.tsx`                                          |
+| Report categories shared by the extension and website                                     | `lib/report-categories.ts`                                           |
 
 Behavior decisions:
 
@@ -68,6 +69,7 @@ Behavior decisions:
 - Closing the full report returns to the speech bubble. "Continue to site" asks for confirmation, then silences the warning for that domain for the rest of the browser session.
 - Suspicious listings collapse into a pink stub with a "Show anyway" link. "Turn off for this site" is stored locally and synced to Spacetime as a SHA-256 hash of the domain.
 - Hornets: +1 per risky (medium/high) site warning, at most once per site per day, plus +1 per hidden listing.
+- Report a hornet: every popup view has a small "Spot a hornet? Report this site" link (prefilled with the current site). The form takes a scam type and an optional note (280 characters) and calls the `report_site` reducer. Individual reports are private (`hornet_report`); only per-site totals are public (`community_flag`), and the clean result shows them ("2 people have reported this site"). Re-reporting a site updates your earlier report instead of counting twice, and each identity can send up to 20 new reports per day. Reports from the website and phone app land in the same Hornet's Nest.
 - The gray placeholder circles now use the character art (`public/characters/`); limbs and the hornet for the entrance are in `public/tango/`.
 
 ## Frontend / Non-Functional extras

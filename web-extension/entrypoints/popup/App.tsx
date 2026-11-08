@@ -10,6 +10,7 @@
  *       still checking -> checking screen
  *     each with a link to the manual checker
  *   - no website (new tab, chrome:// pages) -> manual checker (mockup image-3)
+ * Every result also links to "Report a hornet", for scams Tango missed.
  */
 import { useEffect, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
@@ -17,6 +18,7 @@ import { bg } from '@/lib/messaging';
 import { scannableDomain } from '@/lib/domain';
 import { siteFor } from '@/lib/listing-sites';
 import type { PopupState, SiteReport } from '@/lib/types';
+import { MAX_REPORT_NOTE, REPORT_CATEGORIES, reportsLabel, type CommunityFlag, type ReportCategory } from '@/lib/report-categories';
 import { Character, GlobeIcon, Logo } from '@/components/ui';
 import { RiskReport, timeAgo } from '@/components/RiskReport';
 
@@ -25,7 +27,8 @@ type View =
   | { name: 'page' } // the current tab's result
   | { name: 'checker' }
   | { name: 'manual'; report: SiteReport } // result of a manual check from the checker
-  | { name: 'listings' };
+  | { name: 'listings' }
+  | { name: 'report'; domain: string; back: View }; // "Report a hornet"
 
 const close = () => window.close();
 
@@ -82,6 +85,7 @@ export default function App() {
   const hornets = state?.hornets ?? 0;
   const toChecker = () => setView({ name: 'checker' });
   const toPage = domain && !listingSite ? () => setView({ name: 'page' }) : null;
+  const toReport = (d: string | null) => setView({ name: 'report', domain: d ?? '', back: view });
   const leave = () => {
     if (tabId !== undefined) void bg({ type: 'LEAVE_SITE', tabId }).finally(close);
   };
@@ -94,6 +98,10 @@ export default function App() {
         </div>
       </div>
     );
+  }
+
+  if (view.name === 'report') {
+    return <ReportHornet initial={view.domain} hornets={hornets} onBack={() => setView(view.back)} />;
   }
 
   if (view.name === 'page') {
@@ -109,10 +117,11 @@ export default function App() {
             tertiary={{ label: 'Check another website', onClick: toChecker }}
             primary={{ label: '← Leave this website', onClick: leave }}
           />
+          <ReportLink onClick={() => toReport(domain)} />
         </div>
       );
     }
-    if (scan?.state === 'done') return <CleanResult report={scan.report} onChecker={toChecker} />;
+    if (scan?.state === 'done') return <CleanResult report={scan.report} onChecker={toChecker} onReport={() => toReport(scan.report.domain)} />;
     if (scan?.state === 'error') {
       return (
         <div className="pg-popup">
@@ -134,6 +143,7 @@ export default function App() {
             </button>
             <CheckerLink onClick={toChecker} />
           </div>
+          <ReportLink onClick={() => toReport(domain)} />
           <Foot hornets={hornets} />
         </div>
       );
@@ -152,6 +162,7 @@ export default function App() {
           </div>
           <CheckerLink onClick={toChecker} />
         </div>
+        <ReportLink onClick={() => toReport(domain)} />
         <Foot hornets={hornets} />
       </div>
     );
@@ -159,7 +170,7 @@ export default function App() {
 
   if (view.name === 'manual') {
     const r = view.report;
-    if (r.risk_level === 'none') return <CleanResult report={r} onChecker={toChecker} />;
+    if (r.risk_level === 'none') return <CleanResult report={r} onChecker={toChecker} onReport={() => toReport(r.domain)} />;
     return (
       <div className="pg-popup pg-popup-wide">
         <RiskReport
@@ -170,6 +181,7 @@ export default function App() {
           tertiary={toPage ? { label: "Back to this page's results", onClick: toPage } : undefined}
           primary={{ label: 'Done', onClick: close }}
         />
+        <ReportLink onClick={() => toReport(r.domain)} />
       </div>
     );
   }
@@ -182,6 +194,7 @@ export default function App() {
         onResult={report => setView({ name: 'manual', report })}
         onNotNow={toPage ?? close}
         notNowLabel={toPage ? "Back to this page's results" : 'Not now'}
+        onReport={input => toReport(input)}
       />
     );
   }
@@ -222,6 +235,10 @@ export default function App() {
         <button className="pg-link" onClick={toChecker}>
           Check a website
         </button>
+        <span aria-hidden> · </span>
+        <button className="pg-link" onClick={() => toReport(domain ?? listingSite)}>
+          Report a hornet
+        </button>
       </div>
     </div>
   );
@@ -229,7 +246,11 @@ export default function App() {
 
 // ---------------- views ----------------
 
-function CleanResult({ report, onChecker }: { report: SiteReport; onChecker: () => void }) {
+function CleanResult({ report, onChecker, onReport }: { report: SiteReport; onChecker: () => void; onReport: () => void }) {
+  const [flag, setFlag] = useState<CommunityFlag | null>(null);
+  useEffect(() => {
+    bg<CommunityFlag | null>({ type: 'GET_COMMUNITY_FLAG', domain: report.domain }).then(setFlag, () => {});
+  }, [report.domain]);
   return (
     <div className="pg-popup">
       <Head />
@@ -248,8 +269,168 @@ function CleanResult({ report, onChecker }: { report: SiteReport; onChecker: () 
         <p className="pg-meta" style={{ marginBottom: 0 }}>
           {report.confidence} confidence · checked {timeAgo(report.checked_at_ms)}
         </p>
+        {!!flag?.reports && (
+          <p className="pg-community">
+            Heads up: {reportsLabel(flag.reports)} reported this site to the Hornet's Nest.
+          </p>
+        )}
         <CheckerLink onClick={onChecker} />
       </div>
+      <ReportLink onClick={onReport} />
+    </div>
+  );
+}
+
+/** Low-key entry point under every result, for scams Tango missed. */
+function ReportLink({ onClick, label = 'Spot a hornet? Report this site' }: { onClick: () => void; label?: string }) {
+  return (
+    <div className="pg-report-link">
+      <button className="pg-link" onClick={onClick}>
+        {label}
+      </button>
+    </div>
+  );
+}
+
+function ReportHornet({ initial, hornets, onBack }: { initial: string; hornets: number; onBack: () => void }) {
+  const [input, setInput] = useState(initial);
+  const [category, setCategory] = useState<ReportCategory | null>(null);
+  const [note, setNote] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<CommunityFlag | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!initial) inputRef.current?.focus();
+  }, [initial]);
+
+  async function send() {
+    if (!category || !input.trim() || sending) return;
+    setError(null);
+    setSending(true);
+    try {
+      setDone(await bg<CommunityFlag>({ type: 'REPORT_SITE', input, category, note }));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  if (done) {
+    return (
+      <div className="pg-popup">
+        <Head />
+        <div className="pg-popup-body pg-center">
+          <div className="pg-hero">
+            <Character mood="happy" size={116} />
+          </div>
+          <h1>Hornet reported!</h1>
+          <p className="pg-sub">
+            Thanks for the heads-up. Your report is in the Hornet's Nest, where it helps keep others safe.
+          </p>
+          <div className="pg-domain-pill">
+            <GlobeIcon /> {done.domain}
+          </div>
+          <p className="pg-meta" style={{ marginTop: 0 }}>
+            {reportsLabel(done.reports)} reported this site.
+          </p>
+          <button className="pg-btn pg-btn-block" onClick={close}>
+            Done
+          </button>
+          <p style={{ margin: '12px 0 0' }}>
+            <button className="pg-link" onClick={onBack}>
+              Back
+            </button>
+          </p>
+        </div>
+        <Foot hornets={hornets} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="pg-popup">
+      <Head />
+      <div className="pg-popup-body pg-center">
+        <div className="pg-hero">
+          <Character mood="suspicious" size={64} />
+        </div>
+        <h1>Report a hornet</h1>
+        <p className="pg-sub">Think a site is a scam? Tell Tango so the whole hive can steer clear.</p>
+        <form
+          className="pg-card"
+          onSubmit={e => {
+            e.preventDefault();
+            void send();
+          }}
+        >
+          <div className="pg-card-in">
+            <label className="pg-label" htmlFor="pg-report-url">
+              Website
+            </label>
+            <div className="pg-input">
+              <GlobeIcon />
+              <input
+                id="pg-report-url"
+                ref={inputRef}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                placeholder="example.com"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </div>
+          </div>
+          <div className="pg-card-in">
+            <span className="pg-label" id="pg-report-kind">
+              What kind of scam?
+            </span>
+            <div className="pg-chips" role="radiogroup" aria-labelledby="pg-report-kind">
+              {REPORT_CATEGORIES.map(c => (
+                <button
+                  key={c.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={category === c.id}
+                  className={`pg-chip${category === c.id ? ' pg-chip-on' : ''}`}
+                  onClick={() => setCategory(c.id)}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="pg-card-in">
+            <label className="pg-label" htmlFor="pg-report-note">
+              What happened? <span className="pg-optional">(optional)</span>
+            </label>
+            <textarea
+              id="pg-report-note"
+              className="pg-textarea"
+              value={note}
+              maxLength={MAX_REPORT_NOTE}
+              rows={2}
+              onChange={e => setNote(e.target.value)}
+              placeholder="e.g. Asked for my bank login"
+            />
+          </div>
+          <div className="pg-status">
+            <span>Only the site, category and your note are sent.</span>
+          </div>
+        </form>
+        {error && <p className="pg-error">{error}</p>}
+        <button className="pg-btn pg-btn-block" disabled={sending || !category || !input.trim()} onClick={() => void send()}>
+          {sending ? <span className="pg-spinner" /> : null}
+          {sending ? 'Sending report…' : 'Report this site'}
+        </button>
+        <p style={{ margin: '12px 0 0' }}>
+          <button className="pg-link" onClick={onBack}>
+            Cancel
+          </button>
+        </p>
+      </div>
+      <Foot hornets={hornets} />
     </div>
   );
 }
@@ -260,6 +441,7 @@ function Checker(props: {
   onResult: (r: SiteReport) => void;
   onNotNow: () => void;
   notNowLabel: string;
+  onReport: (input: string) => void;
 }) {
   const [input, setInput] = useState(props.initial);
   const [checking, setChecking] = useState(false);
@@ -328,6 +510,7 @@ function Checker(props: {
           </button>
         </p>
       </div>
+      <ReportLink onClick={() => props.onReport(input)} label="Spot a hornet? Report a site" />
       <Foot hornets={props.hornets} />
     </div>
   );

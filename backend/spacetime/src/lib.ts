@@ -9,6 +9,9 @@ export const STALE_CLAIM_MS = 2 * 60 * 1000; // re-queue scans a dead worker cla
 export const MAX_SIGNALS_BYTES = 16_000;
 export const MAX_LISTINGS_PER_BATCH = 60;
 export const RISK_LEVELS = ['none', 'low', 'medium', 'high'] as const;
+export const REPORT_CATEGORIES = ['phishing', 'shopping', 'job', 'scholarship', 'impersonation', 'other'] as const;
+export const MAX_REPORT_NOTE = 280;
+export const MAX_REPORTS_PER_DAY = 20; // per user, rolling 24h window
 
 export function hex(id: { toHexString(): string }): string {
   return id.toHexString().replace(/^0x/i, '').toLowerCase();

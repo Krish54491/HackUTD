@@ -15,8 +15,14 @@
  *   worker  --submit_listing_verdicts-->  listing_verdict + listing_batch (done)
  *   client  <--SQL: SELECT * FROM listing_batch WHERE id = '...'
  *
- * Privacy: nothing here is keyed by user identity except the hornet counter
+ * Flow (community reports, "Report a hornet"):
+ *   client  --report_site(domain, category, note)-->  hornet_report (private)
+ *                                                      community_flag (public totals)
+ *   client  <--SQL: SELECT * FROM community_flag WHERE domain = '...'
+ *
+ * Privacy: nothing public is keyed by user identity except the hornet counter
  * and per-site toggles, and those store a SHA-256 of the domain, never the domain.
+ * Individual reports are private; only per-domain totals are public.
  */
 import { schema, table, t, SenderError } from 'spacetimedb/server';
 import {
@@ -27,6 +33,9 @@ import {
   MAX_SIGNALS_BYTES,
   MAX_LISTINGS_PER_BATCH,
   RISK_LEVELS,
+  REPORT_CATEGORIES,
+  MAX_REPORT_NOTE,
+  MAX_REPORTS_PER_DAY,
   hex,
   nowMs,
   normalizeDomain,
@@ -126,6 +135,38 @@ const site_setting = table(
   }
 );
 
+/** One row per (user, domain). Private: only the module reads it. */
+const hornet_report = table(
+  { name: 'hornet_report' },
+  {
+    id: t.string().primaryKey(), // `${user_id}:${domain}`
+    user_id: t.string(),
+    domain: t.string(),
+    category: t.string(), // one of REPORT_CATEGORIES
+    note: t.string(),
+    created_at_ms: t.u64(),
+    updated_at_ms: t.u64(),
+  }
+);
+
+/** Public per-domain totals of community reports. No reporter identities. */
+const community_flag = table(
+  { name: 'community_flag', public: true },
+  {
+    domain: t.string().primaryKey(),
+    reports: t.u32(),
+    categories_json: t.string(), // {"phishing": 2, "other": 1}
+    first_reported_at_ms: t.u64(),
+    last_reported_at_ms: t.u64(),
+  }
+);
+
+/** Private rolling-window counter that keeps one identity from flooding reports. */
+const report_quota = table(
+  { name: 'report_quota' },
+  { user_id: t.string().primaryKey(), window_start_ms: t.u64(), count: t.u32() }
+);
+
 const spacetimedb = schema({
   config,
   worker,
@@ -135,6 +176,9 @@ const spacetimedb = schema({
   listing_verdict,
   user_stats,
   site_setting,
+  hornet_report,
+  community_flag,
+  report_quota,
 });
 export default spacetimedb;
 
@@ -417,6 +461,67 @@ export const record_hornets = spacetimedb.reducer(
     };
     if (ctx.db.user_stats.user_id.find(id)) ctx.db.user_stats.user_id.update(next);
     else ctx.db.user_stats.insert(next);
+  }
+);
+
+// ---------- community reports ("Report a hornet") ----------
+
+/**
+ * Report a domain as scam-likely. Re-reporting the same domain updates the
+ * user's category and note without counting twice.
+ */
+export const report_site = spacetimedb.reducer(
+  { domain: t.string(), category: t.string(), note: t.string() },
+  (ctx, { domain, category, note }) => {
+    const d = normalizeDomain(domain);
+    if (!(REPORT_CATEGORIES as readonly string[]).includes(category)) {
+      throw new SenderError(`category must be one of ${REPORT_CATEGORIES.join(', ')}`);
+    }
+    const user_id = hex(ctx.sender);
+    const now = nowMs(ctx);
+    const id = `${user_id}:${d}`;
+    const cleanNote = clip(note, MAX_REPORT_NOTE).trim();
+    const existing = ctx.db.hornet_report.id.find(id);
+
+    if (!existing) {
+      const day = BigInt(24 * 60 * 60 * 1000);
+      const quota = ctx.db.report_quota.user_id.find(user_id);
+      const fresh = !quota || now - quota.window_start_ms >= day;
+      if (!fresh && quota.count >= MAX_REPORTS_PER_DAY) {
+        throw new SenderError('You have sent a lot of reports today. Please try again tomorrow.');
+      }
+      const nextQuota = fresh ? { user_id, window_start_ms: now, count: 1 } : { ...quota, count: quota.count + 1 };
+      if (quota) ctx.db.report_quota.user_id.update(nextQuota);
+      else ctx.db.report_quota.insert(nextQuota);
+    }
+
+    const flag = ctx.db.community_flag.domain.find(d);
+    const counts = flag ? parseJson<Record<string, number>>(flag.categories_json, 'categories_json') : {};
+    if (existing) counts[existing.category] = Math.max(0, (counts[existing.category] ?? 1) - 1);
+    counts[category] = (counts[category] ?? 0) + 1;
+    for (const k of Object.keys(counts)) if (!counts[k]) delete counts[k];
+
+    const flagRow = {
+      domain: d,
+      reports: (flag?.reports ?? 0) + (existing ? 0 : 1),
+      categories_json: JSON.stringify(counts),
+      first_reported_at_ms: flag?.first_reported_at_ms ?? now,
+      last_reported_at_ms: now,
+    };
+    if (flag) ctx.db.community_flag.domain.update(flagRow);
+    else ctx.db.community_flag.insert(flagRow);
+
+    const reportRow = {
+      id,
+      user_id,
+      domain: d,
+      category,
+      note: cleanNote,
+      created_at_ms: existing?.created_at_ms ?? now,
+      updated_at_ms: now,
+    };
+    if (existing) ctx.db.hornet_report.id.update(reportRow);
+    else ctx.db.hornet_report.insert(reportRow);
   }
 );
 

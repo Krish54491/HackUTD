@@ -205,6 +205,16 @@ async function handle(msg: BgMessage, tabId: number | undefined): Promise<unknow
       await playSound(msg.sound, msg.action);
       return { ok: true };
 
+    case 'REPORT_SITE': {
+      const domain = normalizeDomain(msg.input);
+      if (!domain) throw new Error('Enter a website name like example.com');
+      await api.reportSite(domain, msg.category, msg.note);
+      return (await api.getCommunityFlag(domain)) ?? { domain, reports: 1, categories: { [msg.category]: 1 } };
+    }
+
+    case 'GET_COMMUNITY_FLAG':
+      return api.getCommunityFlag(msg.domain);
+
     case 'LEAVE_SITE': {
       const target = msg.tabId ?? tabId; // popup passes tabId; the page modal is the sender tab
       if (target === undefined) return { ok: false };

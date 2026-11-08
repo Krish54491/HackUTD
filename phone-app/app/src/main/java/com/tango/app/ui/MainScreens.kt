@@ -52,7 +52,8 @@ private fun PermissionCard(icon: ImageVector, title: String, status: String, act
 
 @Composable
 fun HomeScreen(records: List<MessageRecord>, demo: Boolean, alerts: Boolean, access: Boolean,
-               review: (String) -> Unit, history: () -> Unit, setup: () -> Unit, demoNotification: () -> Unit) {
+               review: (String) -> Unit, history: () -> Unit, setup: () -> Unit, demoNotification: () -> Unit,
+               report: () -> Unit) {
     Heading("Your protection", if (demo) "On guard. In the\nbackground." else "Your protection,\nat a glance.")
     Badge("Demo messages · simulated findings", Pink, PinkTint)
     Panel {
@@ -86,6 +87,16 @@ fun HomeScreen(records: List<MessageRecord>, demo: Boolean, alerts: Boolean, acc
         HorizontalDivider(color = Line)
     }
     if (recent.isEmpty()) Body("No flagged messages. Your corrections are reflected in History.")
+    Panel(PinkTint) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            CharacterAvatar(36)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text("Spot a hornet Tango missed?", style = MaterialTheme.typography.titleMedium)
+                Body("Report a scam website so others can steer clear.")
+            }
+        }
+        TextAction("Report a website →", report)
+    }
     SecondaryButton("Show demo warning notification", AppIcons.Notifications, demoNotification)
     Body("Fictional messages only. Real message scanning and VPN filtering are not running.")
 }

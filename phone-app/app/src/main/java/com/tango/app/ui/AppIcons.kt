@@ -36,5 +36,6 @@ object AppIcons {
     val CheckCircle = outline("Corrected", "M22,12 A10,10 0,1 1,2,12 A10,10 0,1 1,22,12 M7,12 L10,15 L17,8")
     val LinkOff = outline("LinkDisabled", "M3,3 L21,21 M8,7 H6 A5,5 0,0 0,6,17 H9 M16,7 H18 A5,5 0,0 1,21,16 M10,12 H14")
     val QrCodeScanner = outline("LinkChecks", "M3,8 V3 H8 M16,3 H21 V8 M21,16 V21 H16 M8,21 H3 V16 M8,10 L10,8 H14 L16,10 V14 L14,16 H10 L8,14 Z")
+    val Flag = outline("Flag", "M5,21 V4 M5,4 H18 L15.5,8.5 L18,13 H5")
     val VisibilityOff = outline("Privacy", "M3,3 L21,21 M9,5 C14,3 19,7 22,12 L19,16 M16,19 C11,23 5,18 2,12 L5,8 M10,10 A3,3 0,0 0,14,14")
 }

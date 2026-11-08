@@ -29,7 +29,7 @@ private fun SetupPreview() = PreviewFrame {
 @Preview(name = "Home · demo", widthDp = 393, heightDp = 852)
 @Composable
 private fun HomePreview() = PreviewFrame {
-    HomeScreen(DemoRecords.messages, true, true, true, {}, {}, {}, {})
+    HomeScreen(DemoRecords.messages, true, true, true, {}, {}, {}, {}, {})
 }
 
 @Preview(name = "Message review", widthDp = 393, heightDp = 852)
